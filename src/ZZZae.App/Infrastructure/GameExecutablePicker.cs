@@ -9,20 +9,13 @@ internal static class GameExecutablePicker
     private const uint NoChangeDirectory = 0x0000_0008;
     private const uint HideReadOnly = 0x0000_0004;
 
-    public static unsafe string? Pick(
-        string gameName,
-        string executableName,
-        string? initialExecutablePath
-    )
+    public static unsafe string? Pick(string gameName, string executableName, string? initialExecutablePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(gameName);
         ArgumentException.ThrowIfNullOrWhiteSpace(executableName);
 
         var fileBuffer = new char[FileBufferLength];
-        if (
-            !string.IsNullOrWhiteSpace(initialExecutablePath)
-            && initialExecutablePath.Length < fileBuffer.Length
-        )
+        if (!string.IsNullOrWhiteSpace(initialExecutablePath) && initialExecutablePath.Length < fileBuffer.Length)
         {
             initialExecutablePath.CopyTo(0, fileBuffer, 0, initialExecutablePath.Length);
         }
@@ -37,7 +30,7 @@ internal static class GameExecutablePicker
             var dialog = new NativeMethods.OpenFileName
             {
                 Size = checked((uint)sizeof(NativeMethods.OpenFileName)),
-                Owner = NativeMethods.GetForegroundWindow(),
+                Owner = 0,
                 Filter = filterPointer,
                 FilterIndex = 1,
                 File = file,

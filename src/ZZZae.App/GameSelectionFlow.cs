@@ -88,11 +88,7 @@ internal static class GameSelectionFlow
                 string? selectedPath;
                 try
                 {
-                    selectedPath = GameExecutablePicker.Pick(
-                        "绝区零",
-                        "ZenlessZoneZero.exe",
-                        registryGamePath
-                    );
+                    selectedPath = GameExecutablePicker.Pick("绝区零", "ZenlessZoneZero.exe", registryGamePath);
                 }
                 catch (IOException exception)
                 {

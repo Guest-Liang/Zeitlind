@@ -215,9 +215,6 @@ internal static partial class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static unsafe partial bool Module32Next(nint snapshot, ModuleEntry* moduleEntry);
 
-    [LibraryImport("user32.dll", EntryPoint = "GetForegroundWindow")]
-    internal static partial nint GetForegroundWindow();
-
     [LibraryImport("comdlg32.dll", EntryPoint = "GetOpenFileNameW")]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static unsafe partial bool GetOpenFileName(OpenFileName* openFileName);

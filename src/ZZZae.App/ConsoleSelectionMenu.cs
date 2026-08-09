@@ -23,6 +23,7 @@ internal static class ConsoleSelectionMenu
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            menuTop = Math.Min(menuTop, Math.Max(0, Console.BufferHeight - options.Count));
             Render(options, selected, menuTop);
 
             switch (Console.ReadKey(intercept: true).Key)
@@ -66,12 +67,18 @@ internal static class ConsoleSelectionMenu
             Console.SetCursorPosition(0, menuTop + index);
             output.Write(index == selected ? $"> {options[index]}" : $"  {options[index]}");
         }
-
-        MoveBelowMenu(menuTop, options.Count);
     }
 
     private static void MoveBelowMenu(int menuTop, int optionCount)
     {
-        Console.SetCursorPosition(0, menuTop + optionCount);
+        var targetTop = menuTop + optionCount;
+        if (targetTop < Console.BufferHeight)
+        {
+            Console.SetCursorPosition(0, targetTop);
+            return;
+        }
+
+        Console.SetCursorPosition(0, Math.Max(0, Console.BufferHeight - 1));
+        Console.WriteLine();
     }
 }
