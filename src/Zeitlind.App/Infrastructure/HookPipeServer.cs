@@ -25,9 +25,11 @@ internal sealed record HookUidMessage(uint Uid) : HookMessage;
 internal sealed class HookPipeServer : IAsyncDisposable
 {
     private readonly NamedPipeServerStream _pipe;
+    private readonly uint _expectedClientProcessId;
 
     public HookPipeServer(int processId)
     {
+        _expectedClientProcessId = checked((uint)processId);
         var pipeName = HookProtocol.GetPipeName(processId);
         _pipe = new NamedPipeServerStream(
             pipeName,
@@ -39,9 +41,30 @@ internal sealed class HookPipeServer : IAsyncDisposable
         ApplicationLog.WriteDebug($"已创建 Hook 命名管道：{pipeName}", writeToConsole: false);
     }
 
-    public Task WaitForConnectionAsync(CancellationToken cancellationToken)
+    public async Task WaitForAuthenticatedConnectionAsync(CancellationToken cancellationToken)
     {
-        return _pipe.WaitForConnectionAsync(cancellationToken);
+        while (true)
+        {
+            await _pipe.WaitForConnectionAsync(cancellationToken);
+            if (
+                NativeMethods.GetNamedPipeClientProcessId(
+                    _pipe.SafePipeHandle.DangerousGetHandle(),
+                    out var clientProcessId
+                )
+                && clientProcessId == _expectedClientProcessId
+            )
+            {
+                return;
+            }
+
+            ApplicationLog.WriteWarning(
+                clientProcessId == 0
+                    ? "拒绝了无法验证进程身份的 Hook 管道客户端"
+                    : $"拒绝了错误进程的 Hook 管道客户端：PID {clientProcessId}",
+                writeToConsole: false
+            );
+            DisconnectUnauthenticatedClient();
+        }
     }
 
     public async Task<HookMessage> ReadMessageAsync(CancellationToken cancellationToken)
@@ -54,8 +77,16 @@ internal sealed class HookPipeServer : IAsyncDisposable
             throw new InvalidDataException($"Hook 消息长度 {messageLength} 无效");
         }
 
+        var typeBuffer = new byte[1];
+        await _pipe.ReadExactlyAsync(typeBuffer, cancellationToken);
+        ValidateMessageLength(typeBuffer[0], messageLength);
+
         var message = GC.AllocateUninitializedArray<byte>(messageLength);
-        await _pipe.ReadExactlyAsync(message, cancellationToken);
+        message[0] = typeBuffer[0];
+        if (messageLength > 1)
+        {
+            await _pipe.ReadExactlyAsync(message.AsMemory(1), cancellationToken);
+        }
 
         return message[0] switch
         {
@@ -70,6 +101,37 @@ internal sealed class HookPipeServer : IAsyncDisposable
     public ValueTask DisposeAsync()
     {
         return _pipe.DisposeAsync();
+    }
+
+    private void DisconnectUnauthenticatedClient()
+    {
+        try
+        {
+            _pipe.Disconnect();
+        }
+        catch (Exception exception) when (exception is IOException or InvalidOperationException)
+        {
+            throw new IOException("无法断开未经验证的 Hook 管道客户端", exception);
+        }
+    }
+
+    private static void ValidateMessageLength(byte messageType, int messageLength)
+    {
+        var valid = messageType switch
+        {
+            HookProtocol.ReadyMessage => messageLength == HookProtocol.ReadyMessageLength,
+            HookProtocol.PacketMessage => messageLength is >= HookProtocol.PacketPrefixLength
+                and <= HookProtocol.MaximumMessageLength,
+            HookProtocol.ErrorMessage => messageLength is >= HookProtocol.ErrorPrefixLength
+                and <= HookProtocol.MaximumErrorMessageLength,
+            HookProtocol.UidMessage => messageLength == HookProtocol.UidMessageLength,
+            _ => throw new InvalidDataException($"Hook 消息类型 {messageType} 未知"),
+        };
+
+        if (!valid)
+        {
+            throw new InvalidDataException($"Hook 消息类型 {messageType} 的长度 {messageLength} 无效");
+        }
     }
 
     private static HookReadyMessage ParseReady(ReadOnlySpan<byte> message)

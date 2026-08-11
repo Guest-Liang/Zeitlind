@@ -133,7 +133,7 @@ public sealed class HookFrameTransport
             }
 
             var encoded = Encoding.UTF8.GetBytes(error);
-            var textLength = Math.Min(encoded.Length, 16 * 1024);
+            var textLength = Math.Min(encoded.Length, HookProtocol.MaximumErrorTextLength);
             var message = new byte[HookProtocol.ErrorPrefixLength + textLength];
             message[0] = HookProtocol.ErrorMessage;
             BinaryPrimitives.WriteInt32LittleEndian(message.AsSpan(HookProtocol.ErrorTextLengthOffset), textLength);

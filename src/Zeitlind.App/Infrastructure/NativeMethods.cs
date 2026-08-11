@@ -19,8 +19,24 @@ internal static partial class NativeMethods
     internal const uint DontResolveDllReferences = 0x0000_0001;
     internal const uint GetModuleHandleExUnchangedRefCount = 0x0000_0002;
     internal const uint GetModuleHandleExFromAddress = 0x0000_0004;
+    internal const uint SddlRevision1 = 1;
+    internal const uint FileShareRead = 0x0000_0001;
+    internal const uint FileShareWrite = 0x0000_0002;
+    internal const uint OpenExisting = 3;
+    internal const uint FileFlagOpenReparsePoint = 0x0020_0000;
+    internal const uint FileFlagBackupSemantics = 0x0200_0000;
+    internal const int ErrorFileExists = 80;
+    internal const int ErrorAlreadyExists = 183;
 
     internal static readonly nint InvalidHandleValue = new(-1);
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct SecurityAttributes
+    {
+        internal uint Length;
+        internal nint SecurityDescriptor;
+        internal int InheritHandle;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct StartupInfo
@@ -127,6 +143,52 @@ internal static partial class NativeMethods
     [LibraryImport("kernel32.dll", EntryPoint = "CloseHandle", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool CloseHandle(nint handle);
+
+    [LibraryImport("kernel32.dll", EntryPoint = "GetNamedPipeClientProcessId", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool GetNamedPipeClientProcessId(nint pipe, out uint clientProcessId);
+
+    [LibraryImport(
+        "kernel32.dll",
+        EntryPoint = "CreateDirectoryW",
+        SetLastError = true,
+        StringMarshalling = StringMarshalling.Utf16
+    )]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool CreateDirectory(string path, ref SecurityAttributes securityAttributes);
+
+    [LibraryImport(
+        "kernel32.dll",
+        EntryPoint = "CreateFileW",
+        SetLastError = true,
+        StringMarshalling = StringMarshalling.Utf16
+    )]
+    internal static partial nint CreateFile(
+        string fileName,
+        uint desiredAccess,
+        uint shareMode,
+        nint securityAttributes,
+        uint creationDisposition,
+        uint flagsAndAttributes,
+        nint templateFile
+    );
+
+    [LibraryImport("kernel32.dll", EntryPoint = "LocalFree")]
+    internal static partial nint LocalFree(nint memory);
+
+    [LibraryImport(
+        "advapi32.dll",
+        EntryPoint = "ConvertStringSecurityDescriptorToSecurityDescriptorW",
+        SetLastError = true,
+        StringMarshalling = StringMarshalling.Utf16
+    )]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool ConvertStringSecurityDescriptorToSecurityDescriptor(
+        string stringSecurityDescriptor,
+        uint stringSecurityDescriptorRevision,
+        out nint securityDescriptor,
+        out uint securityDescriptorSize
+    );
 
     [LibraryImport("kernel32.dll", EntryPoint = "WaitForSingleObject", SetLastError = true)]
     internal static partial uint WaitForSingleObject(nint handle, uint milliseconds);

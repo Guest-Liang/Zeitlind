@@ -93,7 +93,7 @@ internal static class AchievementExportSession
     )
     {
         var gameExit = game.WaitForExitAsync(CancellationToken.None);
-        var connection = pipe.WaitForConnectionAsync(cancellationToken);
+        var connection = pipe.WaitForAuthenticatedConnectionAsync(cancellationToken);
         if (await Task.WhenAny(connection, gameExit) == gameExit)
         {
             throw new InvalidOperationException("游戏在 Hook 建立连接前退出");

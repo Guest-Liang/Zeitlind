@@ -64,7 +64,14 @@ internal static unsafe class RemoteHookInjector
             $"Hook 初始化入口：远程基址 0x{remoteHook:X}；{startExport} RVA 0x{startRva:X}",
             writeToConsole: false
         );
-        var exitCode = RunRemoteThread(game.ProcessHandle, startAddress, 0, TimeSpan.FromSeconds(30), startExport);
+        var exitCode = RunRemoteThread(
+            game.ProcessHandle,
+            startAddress,
+            0,
+            TimeSpan.FromSeconds(30),
+            startExport,
+            out _
+        );
         if (exitCode != 0)
         {
             throw new InvalidOperationException($"Hook 初始化入口返回 {exitCode}");
@@ -102,15 +109,18 @@ internal static unsafe class RemoteHookInjector
         nint startAddress,
         nint parameter,
         TimeSpan timeout,
-        string operation
+        string operation,
+        out bool parameterMayBeInUse
     )
     {
+        parameterMayBeInUse = false;
         var thread = NativeMethods.CreateRemoteThread(process, 0, 0, startAddress, parameter, 0, out _);
         if (thread == 0)
         {
             throw SuspendedGameProcess.NewWin32Exception($"创建远程线程执行 {operation} 失败");
         }
 
+        parameterMayBeInUse = parameter != 0;
         try
         {
             var milliseconds =
@@ -133,6 +143,7 @@ internal static unsafe class RemoteHookInjector
                 throw new InvalidOperationException($"远程操作 {operation} 返回未知等待状态 0x{waitResult:X8}");
             }
 
+            parameterMayBeInUse = false;
             if (!NativeMethods.GetExitCodeThread(thread, out var exitCode))
             {
                 throw SuspendedGameProcess.NewWin32Exception($"读取远程操作 {operation} 返回值失败");
@@ -166,6 +177,7 @@ internal static unsafe class RemoteHookInjector
             throw SuspendedGameProcess.NewWin32Exception("在游戏进程中分配 Hook 路径失败");
         }
 
+        var remotePathMayBeInUse = false;
         try
         {
             fixed (byte* source = encodedPath)
@@ -190,7 +202,8 @@ internal static unsafe class RemoteHookInjector
                 remoteLoadLibrary,
                 remotePath,
                 TimeSpan.FromSeconds(30),
-                LoadLibraryName
+                LoadLibraryName,
+                out remotePathMayBeInUse
             );
             if (exitCode == 0)
             {
@@ -199,7 +212,17 @@ internal static unsafe class RemoteHookInjector
         }
         finally
         {
-            _ = NativeMethods.VirtualFreeEx(process, remotePath, 0, NativeMethods.MemRelease);
+            if (!remotePathMayBeInUse)
+            {
+                _ = NativeMethods.VirtualFreeEx(process, remotePath, 0, NativeMethods.MemRelease);
+            }
+            else
+            {
+                ApplicationLog.WriteDebug(
+                    "远程 LoadLibraryW 状态不确定；保留其路径内存，由游戏进程退出时回收",
+                    writeToConsole: false
+                );
+            }
         }
     }
 

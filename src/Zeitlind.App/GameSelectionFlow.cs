@@ -1,3 +1,4 @@
+using System.Security;
 using Zeitlind.App.Games;
 using Zeitlind.App.Infrastructure;
 
@@ -137,6 +138,7 @@ internal static class GameSelectionFlow
                 or IOException
                 or InvalidDataException
                 or NotSupportedException
+                or SecurityException
                 or UnauthorizedAccessException;
     }
 

@@ -26,6 +26,8 @@ public static class HookProtocol
 
     public const int ErrorPrefixLength = 5;
     public const int ErrorTextLengthOffset = 1;
+    public const int MaximumErrorTextLength = 16 * 1024;
+    public const int MaximumErrorMessageLength = ErrorPrefixLength + MaximumErrorTextLength;
 
     public const int UidMessageLength = 5;
     public const int UidValueOffset = 1;

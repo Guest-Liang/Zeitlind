@@ -55,6 +55,7 @@ internal static class ExporterApplication
 
         try
         {
+            EmbeddedHook.CleanLegacyDirectories();
             return await ExportAsync(options);
         }
         catch (OperationCanceledException)
@@ -101,7 +102,7 @@ internal static class ExporterApplication
             return RelaunchedAsAdministratorExitCode;
         }
 
-        var hookPath =
+        using var extractedHook =
             EmbeddedHook.TryExtract(selection.Module)
             ?? throw new InvalidOperationException(
                 $"当前构建没有内嵌 {selection.Module.Descriptor.DisplayName} Hook DLL；请使用完整 Zeitlind"
@@ -116,7 +117,7 @@ internal static class ExporterApplication
 
         return await AchievementExportSession.RunAsync(
             selection,
-            hookPath,
+            extractedHook.Path,
             catalog,
             options.ExportTarget,
             options.OutputDirectory
