@@ -40,6 +40,14 @@ public sealed class HookFrameTransport
             return false;
         }
 
+        if (
+            header.Length > HookProtocol.MaximumPacketHeaderLength
+            || body.Length > HookProtocol.MaximumPacketBodyLength
+        )
+        {
+            return false;
+        }
+
         var messageLength = checked(HookProtocol.PacketPrefixLength + header.Length + body.Length);
         if (messageLength > HookProtocol.MaximumMessageLength)
         {

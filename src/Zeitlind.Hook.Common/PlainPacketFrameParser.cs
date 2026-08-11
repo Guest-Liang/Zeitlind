@@ -1,3 +1,5 @@
+using Zeitlind.Core.Interop;
+
 namespace Zeitlind.Hook.Common;
 
 public readonly ref struct PlainPacketFrame
@@ -21,8 +23,6 @@ public static unsafe class PlainPacketFrameParser
     private const int MinimumPacketLength = 16;
     private const int PacketPrefixLength = 12;
     private const int PacketSuffixLength = 4;
-    private const int MaximumPacketBodyLength = 32 * 1024 * 1024;
-
     public static bool TryParse(
         nint managedArray,
         uint offset,
@@ -59,7 +59,7 @@ public static unsafe class PlainPacketFrameParser
         var commandId = ReadBigEndianUInt16(packet + 4);
         var headerLength = ReadBigEndianUInt16(packet + 6);
         var bodyLength = ReadBigEndianUInt32(packet + 8);
-        if (bodyLength > MaximumPacketBodyLength)
+        if (bodyLength > HookProtocol.MaximumPacketBodyLength)
         {
             return false;
         }

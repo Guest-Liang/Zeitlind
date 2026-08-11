@@ -2,8 +2,6 @@ namespace Zeitlind.Core.Interop;
 
 public static class HookProtocol
 {
-    public const int MaximumMessageLength = 32 * 1024 * 1024;
-
     public const byte ReadyMessage = 1;
     public const byte PacketMessage = 2;
     public const byte ErrorMessage = 3;
@@ -21,6 +19,10 @@ public static class HookProtocol
     public const int PacketCommandIdOffset = 5;
     public const int PacketHeaderLengthOffset = 7;
     public const int PacketBodyLengthOffset = 11;
+    public const int MaximumPacketHeaderLength = ushort.MaxValue;
+    public const int MaximumPacketBodyLength = 32 * 1024 * 1024;
+    public const int MaximumMessageLength =
+        PacketPrefixLength + MaximumPacketHeaderLength + MaximumPacketBodyLength;
 
     public const int ErrorPrefixLength = 5;
     public const int ErrorTextLengthOffset = 1;

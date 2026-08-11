@@ -132,7 +132,12 @@ internal static class GameSelectionFlow
 
     private static bool IsValidationException(Exception exception)
     {
-        return exception is ArgumentException or IOException or NotSupportedException or UnauthorizedAccessException;
+        return exception
+            is ArgumentException
+                or IOException
+                or InvalidDataException
+                or NotSupportedException
+                or UnauthorizedAccessException;
     }
 
     private static void WaitForReturn()

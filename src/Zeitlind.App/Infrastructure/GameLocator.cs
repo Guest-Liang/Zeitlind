@@ -23,7 +23,9 @@ internal static class GameLocator
             var resolved = ResolveForModule(module, value);
             return new RegistryGameStatus(module, resolved, null);
         }
-        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (
+            exception is ArgumentException or IOException or InvalidDataException or UnauthorizedAccessException
+        )
         {
             ApplicationLog.WriteDebug($"{descriptor.DisplayName} 注册表路径无效：{exception}", writeToConsole: false);
             return new RegistryGameStatus(module, null, exception.Message);
@@ -33,7 +35,20 @@ internal static class GameLocator
     public static ResolvedGame Resolve(string configuredPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(configuredPath);
-        var fullPath = Path.GetFullPath(configuredPath.Trim().Trim('"'));
+        var normalizedPath = configuredPath.Trim();
+        if (
+            normalizedPath.Length >= 2
+            && (
+                (normalizedPath[0] == '"' && normalizedPath[^1] == '"')
+                || (normalizedPath[0] == '\'' && normalizedPath[^1] == '\'')
+            )
+        )
+        {
+            normalizedPath = normalizedPath[1..^1];
+        }
+
+        var expandedPath = Environment.ExpandEnvironmentVariables(normalizedPath);
+        var fullPath = Path.GetFullPath(expandedPath);
         if (File.Exists(fullPath))
         {
             var module = GameRegistry.ByExecutableName(Path.GetFileName(fullPath));

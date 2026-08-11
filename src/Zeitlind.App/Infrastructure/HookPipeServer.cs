@@ -102,6 +102,8 @@ internal sealed class HookPipeServer : IAsyncDisposable
         if (
             headerLength < 0
             || bodyLength < 0
+            || headerLength > HookProtocol.MaximumPacketHeaderLength
+            || bodyLength > HookProtocol.MaximumPacketBodyLength
             || (long)headerLength + bodyLength != message.Length - HookProtocol.PacketPrefixLength
         )
         {
