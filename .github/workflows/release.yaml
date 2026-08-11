@@ -58,7 +58,7 @@ jobs:
 
           $versionSourcePath = Join-Path `
             $env:GITHUB_WORKSPACE `
-            'src\ZZZae.App\ApplicationBuildInfo.cs'
+            'src\Zeitlind.App\ApplicationBuildInfo.cs'
           $versionSource = Get-Content -LiteralPath $versionSourcePath -Raw
           $versionMatches = [regex]::Matches(
             $versionSource,
@@ -96,8 +96,8 @@ jobs:
           }
 
           $buildDirectory = Join-Path $env:GITHUB_WORKSPACE 'artifacts\build'
-          $releaseExe = Join-Path $buildDirectory "ZZZae_$($env:RELEASE_VERSION)_Release.exe"
-          $debugExe = Join-Path $buildDirectory "ZZZae_$($env:RELEASE_VERSION)_Debug.exe"
+          $releaseExe = Join-Path $buildDirectory "Zeitlind_$($env:RELEASE_VERSION)_Release.exe"
+          $debugExe = Join-Path $buildDirectory "Zeitlind_$($env:RELEASE_VERSION)_Debug.exe"
           $builtFiles = @(Get-ChildItem -LiteralPath $buildDirectory -File)
           $unexpectedFiles = @(
             $builtFiles | Where-Object {
@@ -116,7 +116,7 @@ jobs:
 
           "release_exe_path=$releaseExe" >> $env:GITHUB_OUTPUT
           "debug_exe_path=$debugExe" >> $env:GITHUB_OUTPUT
-          "artifact_name=ZZZae-$($env:RELEASE_VERSION)-win-x64" >> $env:GITHUB_OUTPUT
+          "artifact_name=Zeitlind-$($env:RELEASE_VERSION)-win-x64" >> $env:GITHUB_OUTPUT
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v7

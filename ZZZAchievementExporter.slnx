@@ -1,7 +1,0 @@
-<Solution>
-  <Project Path="src/ZZZae.App/ZZZae.App.csproj" />
-  <Project Path="src/ZZZae.Core/ZZZae.Core.csproj" />
-  <Project Path="src/ZZZae.Formats/ZZZae.Formats.csproj" />
-  <Project Path="src/ZZZae.Hook/ZZZae.Hook.csproj" />
-  <Project Path="src/ZZZae.Protocol/ZZZae.Protocol.csproj" />
-</Solution>

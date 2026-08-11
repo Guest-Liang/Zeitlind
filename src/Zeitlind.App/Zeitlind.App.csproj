@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Zeitlind</AssemblyName>
+    <RootNamespace>Zeitlind.App</RootNamespace>
+    <AssemblyTitle>Zeitlind 成就导出工具</AssemblyTitle>
+    <Product>Zeitlind</Product>
+    <Company>GuestLiang</Company>
+    <Copyright>Copyright © 2026 GuestLiang</Copyright>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <TargetExt Condition="'$(UseExecutableManagedTargetForNativeAot)' == 'true'">.exe</TargetExt>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PlatformTarget>x64</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PublishAot>true</PublishAot>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <OptimizationPreference>Size</OptimizationPreference>
+    <DebugSymbols>false</DebugSymbols>
+    <DebugType>none</DebugType>
+    <StripSymbols>true</StripSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Zeitlind.Core\Zeitlind.Core.csproj" />
+    <ProjectReference Include="..\Zeitlind.Formats\Zeitlind.Formats.csproj" />
+    <ProjectReference Include="..\Zeitlind.Protocol\Zeitlind.Protocol.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(ZzzHookBinaryPath)' != '' and Exists('$(ZzzHookBinaryPath)')">
+    <EmbeddedResource Include="$(ZzzHookBinaryPath)" LogicalName="Zeitlind.Hooks.zzz.dll" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(HsrHookBinaryPath)' != '' and Exists('$(HsrHookBinaryPath)')">
+    <EmbeddedResource Include="$(HsrHookBinaryPath)" LogicalName="Zeitlind.Hooks.hsr.dll" />
+  </ItemGroup>
+
+  <Target
+    Name="ValidateEmbeddedHook"
+    BeforeTargets="PrepareForPublish"
+    Condition="'$(RequireEmbeddedHook)' == 'true'"
+  >
+    <Error
+      Condition="'$(ZzzHookBinaryPath)' == '' or '$(HsrHookBinaryPath)' == ''"
+      Text="ZzzHookBinaryPath and HsrHookBinaryPath must point to the published NativeAOT hook libraries."
+    />
+    <Error
+      Condition="!Exists('$(ZzzHookBinaryPath)') or !Exists('$(HsrHookBinaryPath)')"
+      Text="One or more required Zeitlind hook libraries were not found."
+    />
+  </Target>
+</Project>

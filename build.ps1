@@ -7,12 +7,14 @@ param(
 $ErrorActionPreference = "Stop"
 
 $projectRoot = (Resolve-Path -LiteralPath $PSScriptRoot).Path
-$solutionPath = Join-Path $projectRoot "ZZZAchievementExporter.slnx"
-$hookProject = Join-Path $projectRoot "src\ZZZae.Hook\ZZZae.Hook.csproj"
-$appProject = Join-Path $projectRoot "src\ZZZae.App\ZZZae.App.csproj"
-$versionSourcePath = Join-Path $projectRoot "src\ZZZae.App\ApplicationBuildInfo.cs"
+$solutionPath = Join-Path $projectRoot "Zeitlind.slnx"
+$zzzHookProject = Join-Path $projectRoot "src\Zeitlind.Hook.Zzz\Zeitlind.Hook.Zzz.csproj"
+$hsrHookProject = Join-Path $projectRoot "src\Zeitlind.Hook.Hsr\Zeitlind.Hook.Hsr.csproj"
+$appProject = Join-Path $projectRoot "src\Zeitlind.App\Zeitlind.App.csproj"
+$versionSourcePath = Join-Path $projectRoot "src\Zeitlind.App\ApplicationBuildInfo.cs"
 $intermediateOutput = Join-Path $projectRoot "artifacts\intermediate"
-$hookOutput = Join-Path $intermediateOutput "hook"
+$zzzHookOutput = Join-Path $intermediateOutput "hook-zzz"
+$hsrHookOutput = Join-Path $intermediateOutput "hook-hsr"
 $appOutput = Join-Path $intermediateOutput "app"
 $preparedOutput = Join-Path $intermediateOutput "prepared"
 $buildOutput = Join-Path $projectRoot "artifacts\build"
@@ -147,7 +149,8 @@ $applicationVersion = Read-ApplicationVersion
 $windowsFileVersion = "$($applicationVersion -replace '-.*$', '').0"
 
 Reset-OutputDirectory -Path $intermediateOutput
-New-Item -ItemType Directory -Path $hookOutput | Out-Null
+New-Item -ItemType Directory -Path $zzzHookOutput | Out-Null
+New-Item -ItemType Directory -Path $hsrHookOutput | Out-Null
 New-Item -ItemType Directory -Path $appOutput | Out-Null
 New-Item -ItemType Directory -Path $preparedOutput | Out-Null
 
@@ -156,20 +159,36 @@ if ($LASTEXITCODE -ne 0) {
     throw "dotnet restore failed with exit code $LASTEXITCODE."
 }
 
-Write-Host "Building shared Hook (Release)..."
-& dotnet publish $hookProject `
+Write-Host "Building ZZZ Hook (Release)..."
+& dotnet publish $zzzHookProject `
     --configuration Release `
     --runtime win-x64 `
     --self-contained true `
     --no-restore `
-    --output $hookOutput
+    --output $zzzHookOutput
 if ($LASTEXITCODE -ne 0) {
-    throw "Building the shared Hook library failed with exit code $LASTEXITCODE."
+    throw "Building the ZZZ Hook library failed with exit code $LASTEXITCODE."
 }
 
-$hookBinary = Join-Path $hookOutput "ZZZae.Hook.dll"
-if (-not (Test-Path -LiteralPath $hookBinary -PathType Leaf)) {
-    throw "The NativeAOT Hook library was not produced at '$hookBinary'."
+$zzzHookBinary = Join-Path $zzzHookOutput "Zeitlind.Hook.Zzz.dll"
+if (-not (Test-Path -LiteralPath $zzzHookBinary -PathType Leaf)) {
+    throw "The ZZZ NativeAOT Hook library was not produced at '$zzzHookBinary'."
+}
+
+Write-Host "Building HSR Hook (Release)..."
+& dotnet publish $hsrHookProject `
+    --configuration Release `
+    --runtime win-x64 `
+    --self-contained true `
+    --no-restore `
+    --output $hsrHookOutput
+if ($LASTEXITCODE -ne 0) {
+    throw "Building the HSR Hook library failed with exit code $LASTEXITCODE."
+}
+
+$hsrHookBinary = Join-Path $hsrHookOutput "Zeitlind.Hook.Hsr.dll"
+if (-not (Test-Path -LiteralPath $hsrHookBinary -PathType Leaf)) {
+    throw "The HSR NativeAOT Hook library was not produced at '$hsrHookBinary'."
 }
 
 foreach ($currentConfiguration in $configurations) {
@@ -182,7 +201,8 @@ foreach ($currentConfiguration in $configurations) {
         --self-contained true `
         --no-restore `
         --output $appOutput `
-        "-p:HookBinaryPath=$hookBinary" `
+        "-p:ZzzHookBinaryPath=$zzzHookBinary" `
+        "-p:HsrHookBinaryPath=$hsrHookBinary" `
         "-p:RequireEmbeddedHook=true" `
         "-p:Version=$applicationVersion" `
         "-p:AssemblyVersion=$windowsFileVersion" `
@@ -198,12 +218,12 @@ foreach ($currentConfiguration in $configurations) {
     }
 
     $appFiles = @(Get-ChildItem -LiteralPath $appOutput -File)
-    if ($appFiles.Count -ne 1 -or $appFiles[0].Name -ne "ZZZae.exe") {
+    if ($appFiles.Count -ne 1 -or $appFiles[0].Name -ne "Zeitlind.exe") {
         $names = $appFiles.Name -join ", "
-        throw "Expected exactly one $currentConfiguration Host file named ZZZae.exe, found: $names"
+        throw "Expected exactly one $currentConfiguration Host file named Zeitlind.exe, found: $names"
     }
 
-    $assetName = "ZZZae_v$($applicationVersion)_$currentConfiguration.exe"
+    $assetName = "Zeitlind_v$($applicationVersion)_$currentConfiguration.exe"
     $preparedAssetPath = Join-Path $preparedOutput $assetName
     Copy-Item -LiteralPath $appFiles[0].FullName -Destination $preparedAssetPath
     Assert-ExecutableMetadata -Path $preparedAssetPath
@@ -211,7 +231,7 @@ foreach ($currentConfiguration in $configurations) {
 
 $expectedNames = @(
     $configurations | ForEach-Object {
-        "ZZZae_v$($applicationVersion)_$($_).exe"
+        "Zeitlind_v$($applicationVersion)_$($_).exe"
     }
 )
 $preparedFiles = @(Get-ChildItem -LiteralPath $preparedOutput -File)
@@ -243,10 +263,10 @@ foreach ($preparedFile in $preparedFiles) {
 }
 
 $currentVersionNames = @(
-    "ZZZae_v$($applicationVersion)_Release.exe"
-    "ZZZae_v$($applicationVersion)_Debug.exe"
+    "Zeitlind_v$($applicationVersion)_Release.exe"
+    "Zeitlind_v$($applicationVersion)_Debug.exe"
 )
-$managedAssetPattern = '^ZZZae_v.+_(?:Release|Debug)\.exe$'
+$managedAssetPattern = '^Zeitlind_v.+_(?:Release|Debug)\.exe$'
 $oldBuildFiles = @(
     Get-ChildItem -LiteralPath $buildOutput -File | Where-Object {
         $_.Name -match $managedAssetPattern -and

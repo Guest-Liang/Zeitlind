@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <RootNamespace>ZZZae.Formats</RootNamespace>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\ZZZae.Core\ZZZae.Core.csproj" />
-  </ItemGroup>
-</Project>

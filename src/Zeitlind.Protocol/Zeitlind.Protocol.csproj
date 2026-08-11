@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Zeitlind.Protocol</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Zeitlind.Core\Zeitlind.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource
+      Include="Metadata\ZzzAchievementInfo.json"
+      LogicalName="Zeitlind.Metadata.Zzz.AchievementInfo.json"
+    />
+    <EmbeddedResource
+      Include="Metadata\HsrAchievementInfo.json"
+      LogicalName="Zeitlind.Metadata.Hsr.AchievementInfo.json"
+    />
+  </ItemGroup>
+</Project>

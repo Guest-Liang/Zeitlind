@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="src/Zeitlind.App/Zeitlind.App.csproj" />
+  <Project Path="src/Zeitlind.Core/Zeitlind.Core.csproj" />
+  <Project Path="src/Zeitlind.Formats/Zeitlind.Formats.csproj" />
+  <Project Path="src/Zeitlind.Hook.Common/Zeitlind.Hook.Common.csproj" />
+  <Project Path="src/Zeitlind.Hook.Hsr/Zeitlind.Hook.Hsr.csproj" />
+  <Project Path="src/Zeitlind.Hook.Zzz/Zeitlind.Hook.Zzz.csproj" />
+  <Project Path="src/Zeitlind.Protocol/Zeitlind.Protocol.csproj" />
+</Solution>
