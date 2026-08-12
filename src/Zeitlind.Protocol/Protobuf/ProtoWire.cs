@@ -133,10 +133,7 @@ internal static class ProtoWire
         var parsed = new List<ulong>();
         while (offset < span.Length)
         {
-            if (
-                parsed.Count >= MaximumPackedVarintCount
-                || !TryReadVarint(span, ref offset, out var value)
-            )
+            if (parsed.Count >= MaximumPackedVarintCount || !TryReadVarint(span, ref offset, out var value))
             {
                 return false;
             }

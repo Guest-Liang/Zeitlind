@@ -9,8 +9,7 @@ namespace Zeitlind.App.Infrastructure;
 internal static class EmbeddedHook
 {
     private const string StagingDirectoryPrefix = "Zeitlind-hook-";
-    private const string AdministratorOnlyDirectorySddl =
-        "O:BAG:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)";
+    private const string AdministratorOnlyDirectorySddl = "O:BAG:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)";
 
     public static ExtractedHook? TryExtract(IGameModule module)
     {
@@ -34,14 +33,16 @@ internal static class EmbeddedHook
         try
         {
             directoryHandle = OpenAndLockDirectory(directory);
-            using (var output = new FileStream(
-                       destination,
-                       FileMode.CreateNew,
-                       FileAccess.Write,
-                       FileShare.None,
-                       bufferSize: 4096,
-                       FileOptions.WriteThrough
-                   ))
+            using (
+                var output = new FileStream(
+                    destination,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None,
+                    bufferSize: 4096,
+                    FileOptions.WriteThrough
+                )
+            )
             {
                 output.Write(data);
                 output.Flush(flushToDisk: true);
@@ -57,8 +58,7 @@ internal static class EmbeddedHook
 
             ApplicationLog.WriteInfo($"Hook 临时文件：{destination}", writeToConsole: false);
             ApplicationLog.WriteDebug(
-                $"Hook 资源：{data.Length} bytes；SHA-256 {digest}；"
-                    + "已写入本次运行专用的受保护目录",
+                $"Hook 资源：{data.Length} bytes；SHA-256 {digest}；已写入本次运行专用的受保护目录",
                 writeToConsole: false
             );
 
@@ -102,14 +102,9 @@ internal static class EmbeddedHook
 
             DeleteEmptyDirectory(root);
         }
-        catch (Exception exception) when (
-            exception is IOException or SecurityException or UnauthorizedAccessException
-        )
+        catch (Exception exception) when (exception is IOException or SecurityException or UnauthorizedAccessException)
         {
-            ApplicationLog.WriteDebug(
-                $"清理旧版 Hook 临时目录失败：{exception.Message}",
-                writeToConsole: false
-            );
+            ApplicationLog.WriteDebug($"清理旧版 Hook 临时目录失败：{exception.Message}", writeToConsole: false);
         }
     }
 
@@ -121,11 +116,9 @@ internal static class EmbeddedHook
             return;
         }
 
-        foreach (var digestDirectory in Directory.EnumerateDirectories(
-                     moduleDirectory,
-                     "*",
-                     SearchOption.TopDirectoryOnly
-                 ))
+        foreach (
+            var digestDirectory in Directory.EnumerateDirectories(moduleDirectory, "*", SearchOption.TopDirectoryOnly)
+        )
         {
             try
             {
@@ -142,9 +135,8 @@ internal static class EmbeddedHook
                 File.Delete(legacyHookPath);
                 DeleteEmptyDirectory(digestDirectory);
             }
-            catch (Exception exception) when (
-                exception is IOException or SecurityException or UnauthorizedAccessException
-            )
+            catch (Exception exception)
+                when (exception is IOException or SecurityException or UnauthorizedAccessException)
             {
                 ApplicationLog.WriteDebug(
                     $"跳过无法清理的旧版 Hook 临时目录：{digestDirectory}；{exception.Message}",
@@ -158,12 +150,14 @@ internal static class EmbeddedHook
 
     private static string CreateProtectedStagingDirectory()
     {
-        if (!NativeMethods.ConvertStringSecurityDescriptorToSecurityDescriptor(
+        if (
+            !NativeMethods.ConvertStringSecurityDescriptorToSecurityDescriptor(
                 AdministratorOnlyDirectorySddl,
                 NativeMethods.SddlRevision1,
                 out var securityDescriptor,
                 out _
-            ))
+            )
+        )
         {
             throw SuspendedGameProcess.NewWin32Exception("无法创建 Hook 临时目录安全描述符");
         }
@@ -179,10 +173,7 @@ internal static class EmbeddedHook
 
             for (var attempt = 0; attempt < 10; attempt++)
             {
-                var directory = Path.Combine(
-                    Path.GetTempPath(),
-                    StagingDirectoryPrefix + Guid.NewGuid().ToString("N")
-                );
+                var directory = Path.Combine(Path.GetTempPath(), StagingDirectoryPrefix + Guid.NewGuid().ToString("N"));
                 if (NativeMethods.CreateDirectory(directory, ref securityAttributes))
                 {
                     return directory;
@@ -226,11 +217,13 @@ internal static class EmbeddedHook
     {
         try
         {
-            foreach (var directory in Directory.EnumerateDirectories(
-                         Path.GetTempPath(),
-                         StagingDirectoryPrefix + "*",
-                         SearchOption.TopDirectoryOnly
-                     ))
+            foreach (
+                var directory in Directory.EnumerateDirectories(
+                    Path.GetTempPath(),
+                    StagingDirectoryPrefix + "*",
+                    SearchOption.TopDirectoryOnly
+                )
+            )
             {
                 if (!IsStagingDirectoryName(Path.GetFileName(directory)))
                 {
@@ -246,9 +239,8 @@ internal static class EmbeddedHook
 
                     DeleteStagingDirectory(directory);
                 }
-                catch (Exception exception) when (
-                    exception is IOException or SecurityException or UnauthorizedAccessException
-                )
+                catch (Exception exception)
+                    when (exception is IOException or SecurityException or UnauthorizedAccessException)
                 {
                     ApplicationLog.WriteDebug(
                         $"跳过仍在使用或无法访问的 Hook 临时目录：{directory}",
@@ -257,21 +249,18 @@ internal static class EmbeddedHook
                 }
             }
         }
-        catch (Exception exception) when (
-            exception is IOException or SecurityException or UnauthorizedAccessException
-        )
+        catch (Exception exception) when (exception is IOException or SecurityException or UnauthorizedAccessException)
         {
-            ApplicationLog.WriteDebug(
-                $"清理旧 Hook 临时目录失败：{exception.Message}",
-                writeToConsole: false
-            );
+            ApplicationLog.WriteDebug($"清理旧 Hook 临时目录失败：{exception.Message}", writeToConsole: false);
         }
     }
 
     private static bool IsStagingDirectoryName(string name)
     {
-        if (!name.StartsWith(StagingDirectoryPrefix, StringComparison.Ordinal)
-            || name.Length != StagingDirectoryPrefix.Length + 32)
+        if (
+            !name.StartsWith(StagingDirectoryPrefix, StringComparison.Ordinal)
+            || name.Length != StagingDirectoryPrefix.Length + 32
+        )
         {
             return false;
         }
@@ -286,8 +275,7 @@ internal static class EmbeddedHook
 
     private static bool IsHexName(ReadOnlySpan<char> name, int expectedLength)
     {
-        return name.Length == expectedLength
-            && name.IndexOfAnyExcept("0123456789abcdefABCDEF") < 0;
+        return name.Length == expectedLength && name.IndexOfAnyExcept("0123456789abcdefABCDEF") < 0;
     }
 
     private static bool IsReparsePoint(string path)
@@ -332,14 +320,9 @@ internal static class EmbeddedHook
         {
             DeleteStagingDirectory(directory);
         }
-        catch (Exception exception) when (
-            exception is IOException or SecurityException or UnauthorizedAccessException
-        )
+        catch (Exception exception) when (exception is IOException or SecurityException or UnauthorizedAccessException)
         {
-            ApplicationLog.WriteDebug(
-                $"{context}：{exception.Message}",
-                writeToConsole: false
-            );
+            ApplicationLog.WriteDebug($"{context}：{exception.Message}", writeToConsole: false);
         }
     }
 
@@ -356,12 +339,7 @@ internal static class EmbeddedHook
         private FileStream? _fileLock;
         private nint _directoryHandle;
 
-        internal ExtractedHook(
-            string path,
-            string directory,
-            FileStream fileLock,
-            nint directoryHandle
-        )
+        internal ExtractedHook(string path, string directory, FileStream fileLock, nint directoryHandle)
         {
             Path = path;
             _directory = directory;
@@ -378,23 +356,15 @@ internal static class EmbeddedHook
 
             try
             {
-                foreach (var file in Directory.EnumerateFiles(
-                             _directory,
-                             "*",
-                             SearchOption.TopDirectoryOnly
-                         ))
+                foreach (var file in Directory.EnumerateFiles(_directory, "*", SearchOption.TopDirectoryOnly))
                 {
                     File.Delete(file);
                 }
             }
-            catch (Exception exception) when (
-                exception is IOException or SecurityException or UnauthorizedAccessException
-            )
+            catch (Exception exception)
+                when (exception is IOException or SecurityException or UnauthorizedAccessException)
             {
-                ApplicationLog.WriteDebug(
-                    $"删除 Hook 临时文件失败：{exception.Message}",
-                    writeToConsole: false
-                );
+                ApplicationLog.WriteDebug($"删除 Hook 临时文件失败：{exception.Message}", writeToConsole: false);
             }
 
             if (_directoryHandle != 0)
@@ -407,14 +377,10 @@ internal static class EmbeddedHook
             {
                 Directory.Delete(_directory, recursive: false);
             }
-            catch (Exception exception) when (
-                exception is IOException or SecurityException or UnauthorizedAccessException
-            )
+            catch (Exception exception)
+                when (exception is IOException or SecurityException or UnauthorizedAccessException)
             {
-                ApplicationLog.WriteDebug(
-                    $"删除 Hook 临时目录失败：{exception.Message}",
-                    writeToConsole: false
-                );
+                ApplicationLog.WriteDebug($"删除 Hook 临时目录失败：{exception.Message}", writeToConsole: false);
             }
         }
     }

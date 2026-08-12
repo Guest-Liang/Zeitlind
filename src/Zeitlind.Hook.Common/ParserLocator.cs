@@ -166,17 +166,7 @@ public static unsafe class ParserLocator
     {
         foreach (var hit in hits)
         {
-            if (
-                !TryResolveFunction(
-                    pe,
-                    functionTable,
-                    functionCount,
-                    hit,
-                    out var begin,
-                    out var end,
-                    out var unwind
-                )
-            )
+            if (!TryResolveFunction(pe, functionTable, functionCount, hit, out var begin, out var end, out var unwind))
             {
                 // 落在任何函数之外的命中只是恰好相同的数据，忽略
                 continue;
@@ -441,12 +431,7 @@ public static unsafe class ParserLocator
     /// RIP 相对寻址和相对跳转，可以原样搬进 trampoline。取第一个不小于 14 字节
     /// 的边界作为补丁长度。
     /// </summary>
-    private static int ComputeRelocatablePatchSize(
-        PeImage pe,
-        uint functionRva,
-        uint functionEndRva,
-        uint unwindRva
-    )
+    private static int ComputeRelocatablePatchSize(PeImage pe, uint functionRva, uint functionEndRva, uint unwindRva)
     {
         ValidateRuntimeFunction(pe, functionRva, functionEndRva, unwindRva);
         var info = pe.GetPointer(unwindRva, 4, "UNWIND_INFO 头");
@@ -555,9 +540,7 @@ public static unsafe class ParserLocator
         {
             case UwopPushNonvol when operationInfo >= 8:
                 length = 2;
-                return code.Length >= length
-                    && code[0] == 0x41
-                    && code[1] == (byte)(0x50 + operationInfo - 8);
+                return code.Length >= length && code[0] == 0x41 && code[1] == (byte)(0x50 + operationInfo - 8);
 
             case UwopPushNonvol:
                 length = 1;

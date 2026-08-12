@@ -23,6 +23,7 @@ public static unsafe class PlainPacketFrameParser
     private const int MinimumPacketLength = 16;
     private const int PacketPrefixLength = 12;
     private const int PacketSuffixLength = 4;
+
     public static bool TryParse(
         nint managedArray,
         uint offset,

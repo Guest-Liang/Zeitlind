@@ -41,10 +41,9 @@ public static class HookWorker
         }
         catch (Exception cleanupException)
         {
-            failure =
-                failure is null
-                    ? new InvalidOperationException("Hook 清理失败", cleanupException)
-                    : new AggregateException("Hook 执行和清理均失败", failure, cleanupException);
+            failure = failure is null
+                ? new InvalidOperationException("Hook 清理失败", cleanupException)
+                : new AggregateException("Hook 执行和清理均失败", failure, cleanupException);
         }
 
         if (failure is not null)

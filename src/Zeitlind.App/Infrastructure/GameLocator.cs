@@ -1,5 +1,5 @@
-using Microsoft.Win32;
 using System.Security;
+using Microsoft.Win32;
 using Zeitlind.App.Games;
 
 namespace Zeitlind.App.Infrastructure;
@@ -24,14 +24,14 @@ internal static class GameLocator
             var resolved = ResolveForModule(module, value);
             return new RegistryGameStatus(module, resolved, null);
         }
-        catch (Exception exception) when (
-            exception
-                is ArgumentException
-                    or IOException
-                    or InvalidDataException
-                    or SecurityException
-                    or UnauthorizedAccessException
-        )
+        catch (Exception exception)
+            when (exception
+                    is ArgumentException
+                        or IOException
+                        or InvalidDataException
+                        or SecurityException
+                        or UnauthorizedAccessException
+            )
         {
             ApplicationLog.WriteDebug($"{descriptor.DisplayName} 注册表路径无效：{exception}", writeToConsole: false);
             return new RegistryGameStatus(module, null, exception.Message);

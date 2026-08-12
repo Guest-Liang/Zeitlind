@@ -56,14 +56,7 @@ public sealed unsafe class InlineHook
             Buffer.MemoryCopy((void*)target, (void*)trampoline, (nuint)patchSize, (nuint)patchSize);
             WriteAbsoluteJump((byte*)trampoline + patchSize, target + patchSize);
 
-            if (
-                !NativeMethods.VirtualProtect(
-                    trampoline,
-                    (nuint)trampolineSize,
-                    NativeMethods.PageExecuteRead,
-                    out _
-                )
-            )
+            if (!NativeMethods.VirtualProtect(trampoline, (nuint)trampolineSize, NativeMethods.PageExecuteRead, out _))
             {
                 throw NewWin32Exception("无法把 Hook trampoline 切换为只读可执行内存");
             }
@@ -208,16 +201,11 @@ public sealed unsafe class InlineHook
         var protectionRestored = NativeMethods.VirtualProtect(
             _target,
             patchSize,
-            finalProtection
-                ?? (Volatile.Read(ref _originalProtectionKnown) != 0 ? _originalProtection : oldProtection),
+            finalProtection ?? (Volatile.Read(ref _originalProtectionKnown) != 0 ? _originalProtection : oldProtection),
             out _
         );
         var protectionError = protectionRestored ? 0 : Marshal.GetLastWin32Error();
-        var cacheFlushed = NativeMethods.FlushInstructionCache(
-            NativeMethods.GetCurrentProcess(),
-            _target,
-            patchSize
-        );
+        var cacheFlushed = NativeMethods.FlushInstructionCache(NativeMethods.GetCurrentProcess(), _target, patchSize);
         var cacheError = cacheFlushed ? 0 : Marshal.GetLastWin32Error();
 
         if (!protectionRestored)

@@ -9,10 +9,7 @@ internal static class ConfiguredPath
         var normalized = value.Trim();
         if (
             normalized.Length >= 2
-            && (
-                (normalized[0] == '"' && normalized[^1] == '"')
-                || (normalized[0] == '\'' && normalized[^1] == '\'')
-            )
+            && ((normalized[0] == '"' && normalized[^1] == '"') || (normalized[0] == '\'' && normalized[^1] == '\''))
         )
         {
             normalized = normalized[1..^1];

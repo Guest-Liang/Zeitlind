@@ -21,8 +21,7 @@ public static class HookProtocol
     public const int PacketBodyLengthOffset = 11;
     public const int MaximumPacketHeaderLength = ushort.MaxValue;
     public const int MaximumPacketBodyLength = 32 * 1024 * 1024;
-    public const int MaximumMessageLength =
-        PacketPrefixLength + MaximumPacketHeaderLength + MaximumPacketBodyLength;
+    public const int MaximumMessageLength = PacketPrefixLength + MaximumPacketHeaderLength + MaximumPacketBodyLength;
 
     public const int ErrorPrefixLength = 5;
     public const int ErrorTextLengthOffset = 1;

@@ -84,8 +84,7 @@ internal static class ExporterApplication
 
     private static async Task<int> ExportAsync(ApplicationOptions options)
     {
-        var outputDirectory =
-            options.OutputDirectory is null ? null : ConfiguredPath.Resolve(options.OutputDirectory);
+        var outputDirectory = options.OutputDirectory is null ? null : ConfiguredPath.Resolve(options.OutputDirectory);
         var selection = GameSelectionFlow.Select(options.GamePath);
         if (selection is null)
         {
@@ -99,11 +98,7 @@ internal static class ExporterApplication
             ApplicationLog.WriteInfo($"游戏路径：{selection.ExecutablePath}");
             ApplicationLog.WriteInfo($"游戏版本：{selection.Version}");
             ApplicationLog.WriteInfo("游戏已确认，正在申请管理员权限...");
-            ElevationManager.RelaunchAsAdministrator(
-                selection.ExecutablePath,
-                options.ExportTarget,
-                outputDirectory
-            );
+            ElevationManager.RelaunchAsAdministrator(selection.ExecutablePath, options.ExportTarget, outputDirectory);
             return RelaunchedAsAdministratorExitCode;
         }
 

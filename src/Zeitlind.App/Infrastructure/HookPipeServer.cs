@@ -120,10 +120,12 @@ internal sealed class HookPipeServer : IAsyncDisposable
         var valid = messageType switch
         {
             HookProtocol.ReadyMessage => messageLength == HookProtocol.ReadyMessageLength,
-            HookProtocol.PacketMessage => messageLength is >= HookProtocol.PacketPrefixLength
-                and <= HookProtocol.MaximumMessageLength,
-            HookProtocol.ErrorMessage => messageLength is >= HookProtocol.ErrorPrefixLength
-                and <= HookProtocol.MaximumErrorMessageLength,
+            HookProtocol.PacketMessage => messageLength
+                is >= HookProtocol.PacketPrefixLength
+                    and <= HookProtocol.MaximumMessageLength,
+            HookProtocol.ErrorMessage => messageLength
+                is >= HookProtocol.ErrorPrefixLength
+                    and <= HookProtocol.MaximumErrorMessageLength,
             HookProtocol.UidMessage => messageLength == HookProtocol.UidMessageLength,
             _ => throw new InvalidDataException($"Hook 消息类型 {messageType} 未知"),
         };
