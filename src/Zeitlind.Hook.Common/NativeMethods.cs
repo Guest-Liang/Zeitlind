@@ -6,6 +6,9 @@ public static partial class NativeMethods
 {
     public const uint MemCommit = 0x1000;
     public const uint MemReserve = 0x2000;
+    public const uint MemRelease = 0x8000;
+    public const uint PageReadWrite = 0x04;
+    public const uint PageExecuteRead = 0x20;
     public const uint PageExecuteReadWrite = 0x40;
     public const uint ImageScnMemExecute = 0x2000_0000;
     public const uint ImageScnMemRead = 0x4000_0000;
@@ -46,6 +49,10 @@ public static partial class NativeMethods
 
     [LibraryImport("kernel32.dll", EntryPoint = "VirtualAlloc", SetLastError = true)]
     public static partial nint VirtualAlloc(nint address, nuint size, uint allocationType, uint protection);
+
+    [LibraryImport("kernel32.dll", EntryPoint = "VirtualFree", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool VirtualFree(nint address, nuint size, uint freeType);
 
     [LibraryImport("kernel32.dll", EntryPoint = "VirtualProtect", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

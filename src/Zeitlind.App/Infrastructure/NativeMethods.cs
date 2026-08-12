@@ -5,6 +5,8 @@ namespace Zeitlind.App.Infrastructure;
 internal static partial class NativeMethods
 {
     internal const uint CreateSuspended = 0x0000_0004;
+    internal const uint JobObjectLimitKillOnJobClose = 0x0000_2000;
+    internal const int JobObjectExtendedLimitInformationClass = 9;
     internal const uint MemCommit = 0x0000_1000;
     internal const uint MemReserve = 0x0000_2000;
     internal const uint MemRelease = 0x0000_8000;
@@ -68,6 +70,42 @@ internal static partial class NativeMethods
         internal nint Thread;
         internal uint ProcessId;
         internal uint ThreadId;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct JobObjectBasicLimitInformation
+    {
+        private long _perProcessUserTimeLimit;
+        private long _perJobUserTimeLimit;
+        internal uint LimitFlags;
+        private nuint _minimumWorkingSetSize;
+        private nuint _maximumWorkingSetSize;
+        private uint _activeProcessLimit;
+        private nuint _affinity;
+        private uint _priorityClass;
+        private uint _schedulingClass;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct IoCounters
+    {
+        private ulong _readOperationCount;
+        private ulong _writeOperationCount;
+        private ulong _otherOperationCount;
+        private ulong _readTransferCount;
+        private ulong _writeTransferCount;
+        private ulong _otherTransferCount;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct JobObjectExtendedLimitInformation
+    {
+        internal JobObjectBasicLimitInformation BasicLimitInformation;
+        private IoCounters _ioInfo;
+        private nuint _processMemoryLimit;
+        private nuint _jobMemoryLimit;
+        private nuint _peakProcessMemoryUsed;
+        private nuint _peakJobMemoryUsed;
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -139,6 +177,31 @@ internal static partial class NativeMethods
     [LibraryImport("kernel32.dll", EntryPoint = "TerminateProcess", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool TerminateProcess(nint process, uint exitCode);
+
+    [LibraryImport(
+        "kernel32.dll",
+        EntryPoint = "CreateJobObjectW",
+        SetLastError = true,
+        StringMarshalling = StringMarshalling.Utf16
+    )]
+    internal static partial nint CreateJobObject(nint jobAttributes, string? name);
+
+    [LibraryImport("kernel32.dll", EntryPoint = "SetInformationJobObject", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool SetInformationJobObject(
+        nint job,
+        int jobObjectInformationClass,
+        ref JobObjectExtendedLimitInformation jobObjectInformation,
+        uint jobObjectInformationLength
+    );
+
+    [LibraryImport("kernel32.dll", EntryPoint = "AssignProcessToJobObject", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool AssignProcessToJobObject(nint job, nint process);
+
+    [LibraryImport("kernel32.dll", EntryPoint = "TerminateJobObject", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool TerminateJobObject(nint job, uint exitCode);
 
     [LibraryImport("kernel32.dll", EntryPoint = "CloseHandle", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

@@ -28,28 +28,45 @@ public sealed class PacketHookState
             return;
         }
 
+        InlineHook? hook = null;
         try
         {
-            var hook = InlineHook.Prepare(location);
+            hook = InlineHook.Prepare(location);
+            _inlineHook = hook;
             assignOriginal(hook.Trampoline);
             hook.Activate(detour);
-            _inlineHook = hook;
         }
-        catch
+        catch (Exception installException)
         {
-            Interlocked.Exchange(ref _installed, 0);
+            try
+            {
+                hook?.Restore();
+                Interlocked.Exchange(ref _inlineHook, null);
+                Interlocked.Exchange(ref _installed, 0);
+            }
+            catch (Exception restoreException)
+            {
+                throw new AggregateException(
+                    "安装 Packet Hook 失败，且回滚目标函数也失败",
+                    installException,
+                    restoreException
+                );
+            }
+
             throw;
         }
     }
 
     public void Uninstall()
     {
-        if (Interlocked.Exchange(ref _installed, 0) == 0)
+        if (Volatile.Read(ref _installed) == 0)
         {
             return;
         }
 
-        Interlocked.Exchange(ref _inlineHook, null)?.Restore();
+        Volatile.Read(ref _inlineHook)?.Restore();
+        Interlocked.Exchange(ref _inlineHook, null);
+        Interlocked.Exchange(ref _installed, 0);
     }
 }
 

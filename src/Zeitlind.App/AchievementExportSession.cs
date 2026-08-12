@@ -8,6 +8,7 @@ namespace Zeitlind.App;
 internal static class AchievementExportSession
 {
     private static readonly TimeSpan UidWaitAfterSnapshot = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan GracefulGameExitTimeout = TimeSpan.FromSeconds(10);
 
     public static async Task<int> RunAsync(
         GameSelection selection,
@@ -54,13 +55,31 @@ internal static class AchievementExportSession
             ApplicationLog.WriteInfo($"正在关闭本次由 Zeitlind 启动的{module.Descriptor.DisplayName}...");
             try
             {
-                game.Terminate(0);
-                ApplicationLog.WriteInfo("游戏已关闭");
+                var closedGracefully = await game.TryCloseGracefullyAsync(GracefulGameExitTimeout);
+                if (closedGracefully)
+                {
+                    ApplicationLog.WriteInfo("游戏已正常退出");
+                }
+                else
+                {
+                    ApplicationLog.WriteWarning("游戏未响应关闭请求，将强制关闭本次游戏进程及其子进程");
+                    game.Terminate(0);
+                    ApplicationLog.WriteInfo("游戏已强制关闭");
+                }
             }
             catch (Exception exception)
             {
-                ApplicationLog.WriteWarningException("快照已取得，但主动关闭游戏失败", exception);
-                ApplicationLog.WriteWarning("仍可继续导出；Zeitlind 退出时会再次尝试关闭游戏");
+                ApplicationLog.WriteWarningException("游戏未能正常退出，将尝试强制关闭", exception);
+                try
+                {
+                    game.Terminate(0);
+                    ApplicationLog.WriteInfo("游戏已强制关闭");
+                }
+                catch (Exception terminateException)
+                {
+                    ApplicationLog.WriteWarningException("快照已取得，但强制关闭游戏也失败", terminateException);
+                    ApplicationLog.WriteWarning("仍可继续导出；Zeitlind 退出时 Job Object 会执行最终清理");
+                }
             }
 
             var target = ExportSelectionFlow.Select(module, configuredTarget, cancellation.Token);

@@ -21,6 +21,7 @@ public static class HookWorker
         ArgumentNullException.ThrowIfNull(reportError);
         ArgumentNullException.ThrowIfNull(cleanup);
 
+        Exception? failure = null;
         try
         {
             work();
@@ -31,11 +32,24 @@ public static class HookWorker
         }
         catch (Exception exception)
         {
-            reportError(exception.ToString());
+            failure = exception;
         }
-        finally
+
+        try
         {
             cleanup();
+        }
+        catch (Exception cleanupException)
+        {
+            failure =
+                failure is null
+                    ? new InvalidOperationException("Hook 清理失败", cleanupException)
+                    : new AggregateException("Hook 执行和清理均失败", failure, cleanupException);
+        }
+
+        if (failure is not null)
+        {
+            reportError(failure.ToString());
         }
     }
 }
@@ -71,7 +85,14 @@ public sealed class HookHost
 
     private void Execute()
     {
-        HookWorker.Run(RunInstalledHook, transport.TrySendError, Cleanup);
+        try
+        {
+            HookWorker.Run(RunInstalledHook, transport.TrySendError, Cleanup);
+        }
+        finally
+        {
+            transport.Disconnect();
+        }
     }
 
     private void RunInstalledHook()
@@ -85,6 +106,5 @@ public sealed class HookHost
     {
         transport.RequestShutdown();
         uninstall();
-        transport.Disconnect();
     }
 }
