@@ -258,10 +258,18 @@ internal sealed class ApplicationLog : IDisposable
                         _writer.WriteLine($"[{timestamp}] [{LevelName(level)}] {line}");
                     }
                 }
-                catch (Exception)
+                catch (Exception exception)
                 {
                     // Logging must never prevent an achievement export.
                     _available = false;
+                    try
+                    {
+                        Console.Error.WriteLine($"警告：日志写入已停止：{exception.Message}");
+                    }
+                    catch (Exception)
+                    {
+                        // The console can be unavailable too; never fail the export for diagnostics.
+                    }
                 }
             }
         }

@@ -45,6 +45,9 @@ internal static class ExporterApplication
         {
             ApplicationLog.WriteInfo($"运行日志：{logPath}");
         }
+        ApplicationLog.WriteWarning(
+            "隐私提示：日志会记录游戏/导出路径和 UID，且不会自动删除；分享日志前请先检查其中的个人信息。"
+        );
         Console.WriteLine();
 
         if (!OperatingSystem.IsWindows() || !Environment.Is64BitProcess)
@@ -81,6 +84,8 @@ internal static class ExporterApplication
 
     private static async Task<int> ExportAsync(ApplicationOptions options)
     {
+        var outputDirectory =
+            options.OutputDirectory is null ? null : ConfiguredPath.Resolve(options.OutputDirectory);
         var selection = GameSelectionFlow.Select(options.GamePath);
         if (selection is null)
         {
@@ -97,7 +102,7 @@ internal static class ExporterApplication
             ElevationManager.RelaunchAsAdministrator(
                 selection.ExecutablePath,
                 options.ExportTarget,
-                options.OutputDirectory
+                outputDirectory
             );
             return RelaunchedAsAdministratorExitCode;
         }
@@ -120,7 +125,7 @@ internal static class ExporterApplication
             extractedHook.Path,
             catalog,
             options.ExportTarget,
-            options.OutputDirectory
+            outputDirectory
         );
     }
 

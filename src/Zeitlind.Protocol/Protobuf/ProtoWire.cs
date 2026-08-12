@@ -28,6 +28,7 @@ internal sealed class ProtoMessage
 internal static class ProtoWire
 {
     private const int MaximumFieldsPerMessage = 65_536;
+    private const int MaximumPackedVarintCount = 65_536;
 
     public static bool TryParse(ReadOnlyMemory<byte> data, out ProtoMessage? message)
     {
@@ -132,7 +133,10 @@ internal static class ProtoWire
         var parsed = new List<ulong>();
         while (offset < span.Length)
         {
-            if (!TryReadVarint(span, ref offset, out var value))
+            if (
+                parsed.Count >= MaximumPackedVarintCount
+                || !TryReadVarint(span, ref offset, out var value)
+            )
             {
                 return false;
             }

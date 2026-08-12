@@ -57,24 +57,23 @@ public static unsafe class ParserLocator
     {
         var pe = PeImage.Open(moduleBase, "GameAssembly.dll");
         var image = pe.Image;
-        var optionalHeader = pe.OptionalHeader;
-        var imageSize = pe.ImageSize;
-        var directoryCount = *(uint*)(optionalHeader + 108);
-        if (directoryCount <= 3)
+        if (!pe.TryGetDataDirectory(3, out var exceptionRva, out var exceptionSize))
         {
             throw new InvalidDataException("GameAssembly.dll 没有异常目录，无法还原函数边界");
         }
 
-        var exceptionDirectory = optionalHeader + 112 + (3 * 8);
-        var exceptionRva = *(uint*)exceptionDirectory;
-        var exceptionSize = *(uint*)(exceptionDirectory + 4);
-        if (exceptionRva == 0 || exceptionSize < 12 || exceptionRva >= imageSize)
+        if (
+            exceptionRva == 0
+            || exceptionSize < 12
+            || exceptionSize % 12 != 0
+            || !pe.ContainsRange(exceptionRva, exceptionSize)
+        )
         {
-            throw new InvalidDataException("GameAssembly.dll 的异常目录为空，无法还原函数边界");
+            throw new InvalidDataException("GameAssembly.dll 的异常目录范围无效，无法还原函数边界");
         }
 
-        var functionTable = image + exceptionRva;
-        var functionCount = (int)(exceptionSize / 12);
+        var functionTable = pe.GetPointer(exceptionRva, exceptionSize, "异常目录");
+        var functionCount = checked((int)(exceptionSize / 12));
 
         var headPattern = ToLittleEndianBytes(headMagic);
         var tailPattern = ToLittleEndianBytes(tailMagic);
@@ -91,8 +90,8 @@ public static unsafe class ParserLocator
         }
 
         var candidates = new List<Candidate>();
-        CollectCandidates(image, functionTable, functionCount, headHits, isHead: true, candidates);
-        CollectCandidates(image, functionTable, functionCount, tailHits, isHead: false, candidates);
+        CollectCandidates(pe, functionTable, functionCount, headHits, isHead: true, candidates);
+        CollectCandidates(pe, functionTable, functionCount, tailHits, isHead: false, candidates);
 
         var matched = new List<Candidate>();
         foreach (var candidate in candidates)
@@ -109,7 +108,7 @@ public static unsafe class ParserLocator
         }
 
         var target = SelectParser(matched);
-        var patchSize = ComputeRelocatablePatchSize(image, target.Begin, target.UnwindInfo);
+        var patchSize = ComputeRelocatablePatchSize(pe, target.Begin, target.End, target.UnwindInfo);
 
         return new ParserLocation((nint)(image + target.Begin), target.Begin, patchSize);
     }
@@ -157,7 +156,7 @@ public static unsafe class ParserLocator
     }
 
     private static void CollectCandidates(
-        byte* image,
+        PeImage pe,
         byte* functionTable,
         int functionCount,
         List<uint> hits,
@@ -169,7 +168,7 @@ public static unsafe class ParserLocator
         {
             if (
                 !TryResolveFunction(
-                    image,
+                    pe,
                     functionTable,
                     functionCount,
                     hit,
@@ -213,7 +212,7 @@ public static unsafe class ParserLocator
                 candidate.HasTail = true;
             }
 
-            candidate.ComparesMagic |= IsCompareImmediate(image, hit);
+            candidate.ComparesMagic |= IsCompareImmediate(pe, hit);
         }
     }
 
@@ -274,7 +273,7 @@ public static unsafe class ParserLocator
     }
 
     private static bool TryResolveFunction(
-        byte* image,
+        PeImage pe,
         byte* functionTable,
         int functionCount,
         uint rva,
@@ -311,7 +310,8 @@ public static unsafe class ParserLocator
             begin = entryBegin;
             end = entryEnd;
             unwind = *(uint*)(entry + 8);
-            FollowChainedUnwindInfo(image, ref begin, ref end, ref unwind);
+            ValidateRuntimeFunction(pe, begin, end, unwind);
+            FollowChainedUnwindInfo(pe, ref begin, ref end, ref unwind);
             return true;
         }
 
@@ -322,21 +322,34 @@ public static unsafe class ParserLocator
     /// 大函数可能被拆成多个 RUNTIME_FUNCTION 片段，片段的 UNWIND_INFO 用
     /// UNW_FLAG_CHAININFO 指回主体。沿链回到真正的函数入口。
     /// </summary>
-    private static void FollowChainedUnwindInfo(byte* image, ref uint begin, ref uint end, ref uint unwind)
+    private static void FollowChainedUnwindInfo(PeImage pe, ref uint begin, ref uint end, ref uint unwind)
     {
         for (var depth = 0; depth < 8; depth++)
         {
-            var info = image + unwind;
+            var info = pe.GetPointer(unwind, 4, "UNWIND_INFO 头");
             if (((info[0] >> 3) & UnwFlagChainInfo) == 0)
             {
                 return;
             }
 
             var codeCount = info[2];
-            var chain = info + 4 + (((codeCount + 1) & ~1) * 2);
+            var chainOffset = checked(4U + checked((uint)((codeCount + 1) & ~1) * 2U));
+            var chainRva = checked(unwind + chainOffset);
+            var chain = pe.GetPointer(chainRva, 12, "链式 RUNTIME_FUNCTION");
             begin = *(uint*)chain;
             end = *(uint*)(chain + 4);
             unwind = *(uint*)(chain + 8);
+            ValidateRuntimeFunction(pe, begin, end, unwind);
+        }
+
+        throw new InvalidDataException("UNWIND_INFO 链超过 8 层，拒绝继续解析");
+    }
+
+    private static void ValidateRuntimeFunction(PeImage pe, uint begin, uint end, uint unwind)
+    {
+        if (begin >= end || !pe.ContainsRange(begin, end - begin) || !pe.ContainsRange(unwind, 4))
+        {
+            throw new InvalidDataException("异常目录包含越界的 RUNTIME_FUNCTION");
         }
     }
 
@@ -345,16 +358,29 @@ public static unsafe class ParserLocator
     /// 覆盖 <c>3D id</c>（cmp eax, imm32）和 <c>[REX] 81 /7 ... id</c>
     /// （cmp r/m32, imm32，含寄存器与内存两种寻址）。
     /// </summary>
-    private static bool IsCompareImmediate(byte* image, uint magicRva)
+    private static bool IsCompareImmediate(PeImage pe, uint magicRva)
     {
-        if (magicRva >= 1 && image[magicRva - 1] == 0x3D)
+        if (
+            magicRva >= 1
+            && pe.ContainsRange(magicRva - 1, 1)
+            && *pe.GetPointer(magicRva - 1, 1, "魔数比较指令") == 0x3D
+        )
         {
             return true;
         }
 
         for (uint back = 2; back <= 11 && back <= magicRva; back++)
         {
-            var instruction = image + magicRva - back;
+            var instructionRva = magicRva - back;
+            if (!pe.ContainsRange(instructionRva, back))
+            {
+                continue;
+            }
+
+            var instruction = new ReadOnlySpan<byte>(
+                pe.GetPointer(instructionRva, back, "魔数比较指令"),
+                checked((int)back)
+            );
             var index = 0;
 
             if ((instruction[index] & 0xF0) == 0x40)
@@ -362,12 +388,17 @@ public static unsafe class ParserLocator
                 index++;
             }
 
-            if (instruction[index] != 0x81)
+            if ((uint)index >= (uint)instruction.Length || instruction[index] != 0x81)
             {
                 continue;
             }
 
             index++;
+            if ((uint)index >= (uint)instruction.Length)
+            {
+                continue;
+            }
+
             var modrm = instruction[index];
             if ((modrm & 0x38) != 0x38)
             {
@@ -392,7 +423,7 @@ public static unsafe class ParserLocator
                 index += 4;
             }
 
-            if (index == back)
+            if (index == instruction.Length)
             {
                 return true;
             }
@@ -410,9 +441,15 @@ public static unsafe class ParserLocator
     /// RIP 相对寻址和相对跳转，可以原样搬进 trampoline。取第一个不小于 14 字节
     /// 的边界作为补丁长度。
     /// </summary>
-    private static int ComputeRelocatablePatchSize(byte* image, uint functionRva, uint unwindRva)
+    private static int ComputeRelocatablePatchSize(
+        PeImage pe,
+        uint functionRva,
+        uint functionEndRva,
+        uint unwindRva
+    )
     {
-        var info = image + unwindRva;
+        ValidateRuntimeFunction(pe, functionRva, functionEndRva, unwindRva);
+        var info = pe.GetPointer(unwindRva, 4, "UNWIND_INFO 头");
         var version = (byte)(info[0] & 0x07);
         if (version != 1)
         {
@@ -425,7 +462,9 @@ public static unsafe class ParserLocator
         }
 
         var codeCount = info[2];
-        var codes = info + 4;
+        var codesRva = checked(unwindRva + 4U);
+        var codeBytes = checked((uint)codeCount * 2U);
+        var codes = pe.GetPointer(codesRva, codeBytes, "UNWIND_CODE");
 
         Span<int> operationSlots = stackalloc int[byte.MaxValue + 1];
         var operationCount = 0;
@@ -435,17 +474,17 @@ public static unsafe class ParserLocator
             var operation = (byte)(codes[(slot * 2) + 1] & 0x0F);
             var operationInfo = (byte)(codes[(slot * 2) + 1] >> 4);
             var slots = SlotsFor(operation, operationInfo);
-            if (slots == 0)
+            if (slots == 0 || slot > codeCount - slots)
             {
-                throw new InvalidDataException($"解析器的 UNWIND_INFO 含有无法识别的操作 {operation}");
+                throw new InvalidDataException($"解析器的 UNWIND_INFO 含有无效操作 {operation}");
             }
 
             operationSlots[operationCount++] = slot;
             slot += slots;
         }
 
-        var function = image + functionRva;
         var consumed = 0;
+        var functionLength = checked((int)(functionEndRva - functionRva));
 
         // UNWIND_CODE 按执行顺序倒序存放，倒着遍历即为序言的执行顺序。
         for (var index = operationCount - 1; index >= 0; index--)
@@ -455,7 +494,18 @@ public static unsafe class ParserLocator
             var operation = (byte)(codes[(current * 2) + 1] & 0x0F);
             var operationInfo = (byte)(codes[(current * 2) + 1] >> 4);
 
-            if (!TryMeasureRelocatable(function + consumed, operation, operationInfo, out var length))
+            if (consumed >= functionLength)
+            {
+                break;
+            }
+
+            var available = Math.Min(7, functionLength - consumed);
+            var codeRva = checked(functionRva + checked((uint)consumed));
+            var code = new ReadOnlySpan<byte>(
+                pe.GetPointer(codeRva, checked((uint)available), "解析器函数序言"),
+                available
+            );
+            if (!TryMeasureRelocatable(code, operation, operationInfo, out var length))
             {
                 break;
             }
@@ -494,27 +544,34 @@ public static unsafe class ParserLocator
     /// 只接受 push 和栈分配；其余操作一律拒绝，因为无法在不做完整反汇编的前提下
     /// 证明它们可以搬迁。
     /// </summary>
-    private static bool TryMeasureRelocatable(byte* code, byte operation, byte operationInfo, out int length)
+    private static bool TryMeasureRelocatable(
+        ReadOnlySpan<byte> code,
+        byte operation,
+        byte operationInfo,
+        out int length
+    )
     {
         switch (operation)
         {
             case UwopPushNonvol when operationInfo >= 8:
                 length = 2;
-                return code[0] == 0x41 && code[1] == (byte)(0x50 + operationInfo - 8);
+                return code.Length >= length
+                    && code[0] == 0x41
+                    && code[1] == (byte)(0x50 + operationInfo - 8);
 
             case UwopPushNonvol:
                 length = 1;
-                return code[0] == (byte)(0x50 + operationInfo);
+                return code.Length >= length && code[0] == (byte)(0x50 + operationInfo);
 
             // sub rsp, imm8
             case UwopAllocSmall:
                 length = 4;
-                return code[0] == 0x48 && code[1] == 0x83 && code[2] == 0xEC;
+                return code.Length >= length && code[0] == 0x48 && code[1] == 0x83 && code[2] == 0xEC;
 
             // sub rsp, imm32
             case UwopAllocLarge:
                 length = 7;
-                return code[0] == 0x48 && code[1] == 0x81 && code[2] == 0xEC;
+                return code.Length >= length && code[0] == 0x48 && code[1] == 0x81 && code[2] == 0xEC;
 
             default:
                 length = 0;

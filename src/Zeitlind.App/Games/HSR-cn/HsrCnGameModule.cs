@@ -87,11 +87,14 @@ internal sealed class HsrCnGameModule : IGameModule
             throw new FileNotFoundException("星穹铁道目录缺少 StarRail_Data\\app.info", path);
         }
 
-        var lines = File.ReadAllLines(path);
+        using var reader = new StringReader(BoundedTextFile.ReadAllText(path, "app.info"));
+        var publisher = reader.ReadLine();
+        var product = reader.ReadLine();
         if (
-            lines.Length < 2
-            || !lines[0].Trim().Equals(ExpectedPublisher, StringComparison.Ordinal)
-            || !lines[1].Trim().Equals(ExpectedProduct, StringComparison.Ordinal)
+            publisher is null
+            || product is null
+            || !publisher.Trim().Equals(ExpectedPublisher, StringComparison.Ordinal)
+            || !product.Trim().Equals(ExpectedProduct, StringComparison.Ordinal)
         )
         {
             throw new InvalidDataException("app.info 与国服《崩坏：星穹铁道》不匹配");
@@ -129,7 +132,8 @@ internal sealed class HsrCnGameModule : IGameModule
     {
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var inSection = false;
-        foreach (var rawLine in File.ReadLines(path))
+        using var reader = new StringReader(BoundedTextFile.ReadAllText(path, "config.ini"));
+        while (reader.ReadLine() is { } rawLine)
         {
             var line = rawLine.Trim();
             if (line.Length == 0 || line[0] is ';' or '#')

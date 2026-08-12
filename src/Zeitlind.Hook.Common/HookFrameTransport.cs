@@ -22,15 +22,23 @@ public sealed class HookFrameTransport
 
     public void Connect(int processId)
     {
-        var pipe = new NamedPipeClientStream(
+        NamedPipeClientStream? pipe = new(
             ".",
             HookProtocol.GetPipeName(processId),
             PipeDirection.Out,
             PipeOptions.None
         );
-        pipe.Connect(30_000);
-        _pipe = pipe;
-        Volatile.Write(ref _connected, 1);
+        try
+        {
+            pipe.Connect(30_000);
+            _pipe = pipe;
+            pipe = null;
+            Volatile.Write(ref _connected, 1);
+        }
+        finally
+        {
+            pipe?.Dispose();
+        }
     }
 
     public bool TryEnqueuePacket(ushort commandId, ReadOnlySpan<byte> header, ReadOnlySpan<byte> body)

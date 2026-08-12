@@ -64,7 +64,8 @@ Zeitlind.exe --version
 - `Zeitlind-<game>-liyin-日期时间.json`：对应游戏的 Liyin 导入格式；
 - `Zeitlind-<game>-uiaf-日期时间.json`：对应游戏的 UIAF 实验格式。
 
-程序日志位于可执行文件所在目录，文件名为 `Zeitlind-YYYY-MM-DD.log`。
+> [!WARNING]
+> 程序日志位于可执行文件所在目录，文件名为 `Zeitlind-YYYY-MM-DD.log`。日志可能包含游戏路径、导出路径和 UID，并且不会自动删除；向他人分享日志前，请先检查其中是否包含不希望公开的个人信息。
 
 运行时提取的 Hook DLL 位于本次运行专用的受保护临时目录；导出成功、取消或发生可处理异常后会自动删除。若进程被强制终止而来不及清理，下一次运行会尝试清除遗留目录。升级后的首次普通权限启动还会在申请 UAC 前清理旧版本固定路径中遗留的 Hook DLL。
 

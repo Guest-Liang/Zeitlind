@@ -41,20 +41,7 @@ internal static class GameLocator
     public static ResolvedGame Resolve(string configuredPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(configuredPath);
-        var normalizedPath = configuredPath.Trim();
-        if (
-            normalizedPath.Length >= 2
-            && (
-                (normalizedPath[0] == '"' && normalizedPath[^1] == '"')
-                || (normalizedPath[0] == '\'' && normalizedPath[^1] == '\'')
-            )
-        )
-        {
-            normalizedPath = normalizedPath[1..^1];
-        }
-
-        var expandedPath = Environment.ExpandEnvironmentVariables(normalizedPath);
-        var fullPath = Path.GetFullPath(expandedPath);
+        var fullPath = ConfiguredPath.Resolve(configuredPath);
         if (File.Exists(fullPath))
         {
             var module = GameRegistry.ByExecutableName(Path.GetFileName(fullPath));

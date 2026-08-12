@@ -38,7 +38,7 @@ internal sealed class ZzzCnGameModule : IGameModule
             throw new FileNotFoundException("游戏目录缺少 version_info，无法确认绝区零渠道", versionPath);
         }
 
-        var marker = File.ReadAllText(versionPath).Trim();
+        var marker = BoundedTextFile.ReadAllText(versionPath, "version_info").Trim();
         if (!marker.StartsWith(ProductionMarker, StringComparison.Ordinal))
         {
             throw new InvalidDataException($"构建标记 {marker} 不是 Zeitlind 支持的绝区零国服正式渠道");
