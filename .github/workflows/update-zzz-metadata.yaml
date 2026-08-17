@@ -43,14 +43,37 @@ jobs:
         run: |
           set -euo pipefail
 
-          open_pr="$(
+          latest_pr="$(
             gh pr list \
               --repo "$GITHUB_REPOSITORY" \
-              --state open \
+              --state all \
               --head "$UPDATE_BRANCH" \
-              --json number \
-              --jq '.[0].number'
+              --search 'sort:created-desc' \
+              --limit 1 \
+              --json number,state \
+              --jq '.[0] // {}'
           )"
+          pr_number="$(jq -r '.number // empty' <<< "$latest_pr")"
+          pr_state="$(jq -r '.state // empty' <<< "$latest_pr")"
+
+          if [[ "$pr_state" == "OPEN" ]]; then
+            open_pr="$pr_number"
+          else
+            open_pr=""
+          fi
+
+          if [[ "$pr_state" == "MERGED" ]]; then
+            remote_branch="$(
+              git ls-remote \
+                --heads origin "refs/heads/$UPDATE_BRANCH"
+            )"
+            if [[ -n "$remote_branch" ]]; then
+              git push origin --delete "$UPDATE_BRANCH"
+              echo \
+                "Deleted $UPDATE_BRANCH after merged pull request #$pr_number." \
+                >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
 
           if [[ -n "$open_pr" ]]; then
             git fetch \
