@@ -1,6 +1,14 @@
 # Zeitlind
 
 Zeitlind 是 Windows x64 下的游戏成就导出工具
+
+~~已通过AI Slop认证~~
+<p align="center">
+  <img src="./image/certificated-ai-slop.png" width="100%">
+  <br>
+  <sub>由 <a href="https://github.com/Masterain98">@Masterain98</a> 使用GPT生成</sub>
+</p>
+
 支持情况：
 | 游戏 | 国服 | 国际服 |
 | --- | --- | --- |
