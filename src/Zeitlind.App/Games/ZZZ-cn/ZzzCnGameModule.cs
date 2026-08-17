@@ -139,13 +139,32 @@ internal sealed class ZzzCnGameModule : IGameModule
 
         public string FormatDiagnostics()
         {
-            return $"绝区零正式协议：命令 {Profile.FullSnapshotCommandId}，路径 {Profile.RecordFieldPath}";
+            var diagnostic = _decoder.BestCandidate;
+            var candidate = diagnostic is null
+                ? "成就候选：尚未发现至少 3 条且元数据命中率达到 60% 的记录组"
+                : $"最佳成就候选：{FormatCandidateDiagnostic(diagnostic)}";
+            return $"绝区零正式协议：命令 {Profile.FullSnapshotCommandId}，路径 {Profile.RecordFieldPath}；{candidate}";
         }
 
         public string FormatSnapshotDetails(AchievementSnapshot snapshot)
         {
             return $"命令 {snapshot.SourceCommandId}，路径 {snapshot.RecordFieldPath}，"
-                + $"ID/完成时间/完成标志字段 {snapshot.IdFieldNumber}/{snapshot.FinishTimestampFieldNumber}/{snapshot.CompletedFlagFieldNumber}";
+                + $"ID/完成时间/完成标志字段 {snapshot.IdFieldNumber}/{Display(snapshot.FinishTimestampFieldNumber)}/"
+                + $"{Display(snapshot.CompletedFlagFieldNumber)}";
+        }
+
+        private static string Display(uint? value)
+        {
+            return value?.ToString() ?? "未识别";
+        }
+
+        private static string FormatCandidateDiagnostic(AchievementCandidateDiagnostic diagnostic)
+        {
+            return $"命令 {diagnostic.CommandId}，路径 {diagnostic.RecordFieldPath}，"
+                + $"ID 字段 {diagnostic.IdFieldNumber}，完成时间字段 {Display(diagnostic.FinishTimestampFieldNumber)}，"
+                + $"完成标志字段 {Display(diagnostic.CompletedFlagFieldNumber)}；记录 {diagnostic.RecordCount} 条，"
+                + $"元数据命中 {diagnostic.CatalogMatchCount} 条，未知 ID {diagnostic.UnknownIdCount} 条，"
+                + $"完成证据 {diagnostic.CompletionEvidenceCount} 条；{diagnostic.Decision}";
         }
     }
 }

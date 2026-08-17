@@ -21,6 +21,8 @@ public sealed record AchievementCandidateDiagnostic
 
     public required uint? ProgressFieldNumber { get; init; }
 
+    public uint? CompletedFlagFieldNumber { get; init; }
+
     public required int RecordCount { get; init; }
 
     public required int CatalogMatchCount { get; init; }

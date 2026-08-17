@@ -36,6 +36,11 @@ internal static class VarintFieldReader
             : null;
     }
 
+    public static bool? ReadBoolean(IReadOnlyDictionary<uint, ulong> row, uint? fieldNumber)
+    {
+        return fieldNumber is null ? null : ReadBoolean(row, fieldNumber.Value);
+    }
+
     public static bool? ReadBoolean(IReadOnlyDictionary<uint, ulong> row, uint fieldNumber)
     {
         return row.TryGetValue(fieldNumber, out var value) && value <= 1 ? value == 1 : null;
