@@ -38,7 +38,7 @@ internal sealed class UiafInfo
 internal sealed class UiafGameData
 {
     [JsonPropertyName("uid")]
-    public required uint Uid { get; init; }
+    public required ulong? Uid { get; init; }
 
     [JsonPropertyName("list")]
     public required UiafAchievement[] List { get; init; }

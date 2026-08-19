@@ -58,7 +58,6 @@ internal static class ExporterApplication
 
         try
         {
-            EmbeddedHook.CleanLegacyDirectories();
             return await ExportAsync(options);
         }
         catch (OperationCanceledException)
@@ -89,6 +88,20 @@ internal static class ExporterApplication
         if (selection is null)
         {
             return UserRequestedExitCode;
+        }
+
+        if (options.ExportTarget is { } configuredTarget)
+        {
+            try
+            {
+                ExportSelectionFlow.ValidateConfiguredTarget(selection.Module, configuredTarget);
+            }
+            catch (InvalidDataException exception)
+            {
+                ApplicationLog.WriteError(exception.Message);
+                WriteUsage();
+                return 2;
+            }
         }
 
         EnsureGameIsNotRunning(selection);
@@ -166,7 +179,7 @@ internal static class ExporterApplication
 
                     if (++index >= args.Length || !TryParseFormat(args[index], out var parsedTarget))
                     {
-                        error = "--format 必须是 backup、liyin 或 uiaf";
+                        error = "--format 必须是 backup、liyin、uiaf 或 uiaf12";
                         options = default!;
                         return false;
                     }
@@ -233,6 +246,7 @@ internal static class ExporterApplication
             "backup" => ExportTarget.AchievementBackup,
             "liyin" => ExportTarget.Liyin,
             "uiaf" => ExportTarget.UiafExperimental,
+            "uiaf12" => ExportTarget.UiafV12,
             _ => (ExportTarget)(-1),
         };
         return Enum.IsDefined(target);
@@ -242,7 +256,7 @@ internal static class ExporterApplication
     {
         const string usage =
             "用法：Zeitlind.exe [--game \"游戏目录或 ZenlessZoneZero.exe/StarRail.exe/YuanShen.exe\"] "
-            + "[--format backup|liyin|uiaf] [--output \"输出目录\"]";
+            + "[--format backup|liyin|uiaf|uiaf12] [--output \"输出目录\"]";
         if (writeAsError)
         {
             ApplicationLog.WriteError(usage);

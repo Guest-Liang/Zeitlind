@@ -58,18 +58,19 @@ internal sealed class ZzzCnGameModule : IGameModule
         return new ZzzCaptureAdapter(catalog, gameVersion);
     }
 
-    public string Serialize(ExportTarget target, AchievementSnapshot snapshot, uint uid, AchievementCatalog catalog)
+    public string Serialize(ExportTarget target, AchievementSnapshot snapshot, ulong? uid, AchievementCatalog catalog)
     {
+        var confirmedUid = uid ?? throw new InvalidOperationException("绝区零导出需要已确认的 UID");
         return target switch
         {
             ExportTarget.AchievementBackup => AchievementBackupExporter.Serialize(
                 snapshot,
-                uid,
+                confirmedUid,
                 catalog.LatestVersion,
                 catalog.Count
             ),
-            ExportTarget.Liyin => ZzzLiyinExporter.Serialize(snapshot, uid),
-            ExportTarget.UiafExperimental => ZzzUiafExporter.Serialize(snapshot, uid),
+            ExportTarget.Liyin => ZzzLiyinExporter.Serialize(snapshot, confirmedUid),
+            ExportTarget.UiafExperimental => ZzzUiafExporter.Serialize(snapshot, confirmedUid),
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };
     }
@@ -109,6 +110,7 @@ internal sealed class ZzzCnGameModule : IGameModule
         };
 
         private readonly ZzzAchievementSnapshotDecoder _decoder;
+        private readonly PacketCaptureDiagnostics _diagnostics = new();
 
         public ZzzCaptureAdapter(AchievementCatalog catalog, string gameVersion)
         {
@@ -132,6 +134,11 @@ internal sealed class ZzzCnGameModule : IGameModule
             );
         }
 
+        public void ObservePacket(CapturedPacket packet)
+        {
+            _diagnostics.Observe(packet);
+        }
+
         public bool TryDecodeSnapshot(CapturedPacket packet, out AchievementSnapshot? snapshot)
         {
             return _decoder.TryDecode(packet, out snapshot);
@@ -143,7 +150,7 @@ internal sealed class ZzzCnGameModule : IGameModule
             var candidate = diagnostic is null
                 ? "成就候选：尚未发现至少 3 条且元数据命中率达到 60% 的记录组"
                 : $"最佳成就候选：{FormatCandidateDiagnostic(diagnostic)}";
-            return $"绝区零正式协议：命令 {Profile.FullSnapshotCommandId}，路径 {Profile.RecordFieldPath}；{candidate}";
+            return $"{_diagnostics.FormatForLog(limit: 12)}；绝区零正式协议：命令 {Profile.FullSnapshotCommandId}，路径 {Profile.RecordFieldPath}；{candidate}";
         }
 
         public string FormatSnapshotDetails(AchievementSnapshot snapshot)

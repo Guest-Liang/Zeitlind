@@ -2,6 +2,7 @@ using Zeitlind.App.Infrastructure;
 using Zeitlind.Core.Achievements;
 using Zeitlind.Core.Games;
 using Zeitlind.Protocol.Capture;
+using Zeitlind.Protocol.Identity;
 using Zeitlind.Protocol.Metadata;
 
 namespace Zeitlind.App.Games;
@@ -25,7 +26,7 @@ internal interface IGameModule
 
     IGameCaptureAdapter CreateCaptureAdapter(AchievementCatalog catalog, string gameVersion);
 
-    string Serialize(ExportTarget target, AchievementSnapshot snapshot, uint uid, AchievementCatalog catalog);
+    string Serialize(ExportTarget target, AchievementSnapshot snapshot, ulong? uid, AchievementCatalog catalog);
 
     string BuildExportSummary(ExportTarget target, AchievementSnapshot snapshot, AchievementCatalog catalog);
 }
@@ -34,14 +35,15 @@ internal interface IGameCaptureAdapter
 {
     string StartInstruction { get; }
 
+    bool CanExportWithoutConfirmedUid => false;
+
     void OnHookReady(HookReadyMessage message);
 
     void ObservePacket(CapturedPacket packet) { }
 
-    bool TryDecodeIdentity(CapturedPacket packet, out uint uid, out string detail)
+    bool TryDecodeIdentity(CapturedPacket packet, out PlayerIdentityEvidence evidence)
     {
-        uid = 0;
-        detail = string.Empty;
+        evidence = default;
         return false;
     }
 
@@ -56,11 +58,6 @@ internal static class GameRegistry
 {
     public static IReadOnlyList<IGameModule> All { get; } =
     [ZzzCnGameModule.Instance, HsrCnGameModule.Instance, GiCnGameModule.Instance];
-
-    public static IGameModule ByKind(GameKind kind)
-    {
-        return All.Single(module => module.Descriptor.Kind == kind);
-    }
 
     public static IGameModule? ByExecutableName(string fileName)
     {

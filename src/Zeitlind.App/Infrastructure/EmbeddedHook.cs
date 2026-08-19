@@ -21,8 +21,6 @@ internal static class EmbeddedHook
             return null;
         }
 
-        CleanStaleDirectories();
-
         var data = ReadAllBytes(source);
         var digest = Convert.ToHexString(SHA256.HashData(data));
         var directory = CreateProtectedStagingDirectory();
@@ -78,74 +76,6 @@ internal static class EmbeddedHook
             DeleteStagingDirectoryBestEffort(directory, "回滚 Hook 临时目录失败");
             throw;
         }
-    }
-
-    public static void CleanLegacyDirectories()
-    {
-        if (ElevationManager.IsAdministrator())
-        {
-            return;
-        }
-
-        var root = Path.Combine(Path.GetTempPath(), "Zeitlind");
-        try
-        {
-            if (!Directory.Exists(root) || IsReparsePoint(root))
-            {
-                return;
-            }
-
-            foreach (var module in GameRegistry.All)
-            {
-                CleanLegacyModuleDirectory(root, module);
-            }
-
-            DeleteEmptyDirectory(root);
-        }
-        catch (Exception exception) when (exception is IOException or SecurityException or UnauthorizedAccessException)
-        {
-            ApplicationLog.WriteDebug($"清理旧版 Hook 临时目录失败：{exception.Message}", writeToConsole: false);
-        }
-    }
-
-    private static void CleanLegacyModuleDirectory(string root, IGameModule module)
-    {
-        var moduleDirectory = Path.Combine(root, module.Descriptor.Id);
-        if (!Directory.Exists(moduleDirectory) || IsReparsePoint(moduleDirectory))
-        {
-            return;
-        }
-
-        foreach (
-            var digestDirectory in Directory.EnumerateDirectories(moduleDirectory, "*", SearchOption.TopDirectoryOnly)
-        )
-        {
-            try
-            {
-                var digestName = Path.GetFileName(digestDirectory);
-                if (!IsHexName(digestName, 16) || IsReparsePoint(digestDirectory))
-                {
-                    continue;
-                }
-
-                var legacyHookPath = Path.Combine(
-                    digestDirectory,
-                    Path.GetFileName(module.Descriptor.HookResourceName)
-                );
-                File.Delete(legacyHookPath);
-                DeleteEmptyDirectory(digestDirectory);
-            }
-            catch (Exception exception)
-                when (exception is IOException or SecurityException or UnauthorizedAccessException)
-            {
-                ApplicationLog.WriteDebug(
-                    $"跳过无法清理的旧版 Hook 临时目录：{digestDirectory}；{exception.Message}",
-                    writeToConsole: false
-                );
-            }
-        }
-
-        DeleteEmptyDirectory(moduleDirectory);
     }
 
     private static string CreateProtectedStagingDirectory()
@@ -211,92 +141,6 @@ internal static class EmbeddedHook
         }
 
         return handle;
-    }
-
-    private static void CleanStaleDirectories()
-    {
-        try
-        {
-            foreach (
-                var directory in Directory.EnumerateDirectories(
-                    Path.GetTempPath(),
-                    StagingDirectoryPrefix + "*",
-                    SearchOption.TopDirectoryOnly
-                )
-            )
-            {
-                if (!IsStagingDirectoryName(Path.GetFileName(directory)))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    if (IsReparsePoint(directory))
-                    {
-                        continue;
-                    }
-
-                    DeleteStagingDirectory(directory);
-                }
-                catch (Exception exception)
-                    when (exception is IOException or SecurityException or UnauthorizedAccessException)
-                {
-                    ApplicationLog.WriteDebug(
-                        $"跳过仍在使用或无法访问的 Hook 临时目录：{directory}",
-                        writeToConsole: false
-                    );
-                }
-            }
-        }
-        catch (Exception exception) when (exception is IOException or SecurityException or UnauthorizedAccessException)
-        {
-            ApplicationLog.WriteDebug($"清理旧 Hook 临时目录失败：{exception.Message}", writeToConsole: false);
-        }
-    }
-
-    private static bool IsStagingDirectoryName(string name)
-    {
-        if (
-            !name.StartsWith(StagingDirectoryPrefix, StringComparison.Ordinal)
-            || name.Length != StagingDirectoryPrefix.Length + 32
-        )
-        {
-            return false;
-        }
-
-        return IsHexName(name.AsSpan(StagingDirectoryPrefix.Length), 32);
-    }
-
-    private static bool IsHexName(string name, int expectedLength)
-    {
-        return IsHexName(name.AsSpan(), expectedLength);
-    }
-
-    private static bool IsHexName(ReadOnlySpan<char> name, int expectedLength)
-    {
-        return name.Length == expectedLength && name.IndexOfAnyExcept("0123456789abcdefABCDEF") < 0;
-    }
-
-    private static bool IsReparsePoint(string path)
-    {
-        return (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
-    }
-
-    private static void DeleteEmptyDirectory(string directory)
-    {
-        try
-        {
-            Directory.Delete(directory, recursive: false);
-        }
-        catch (DirectoryNotFoundException)
-        {
-            // Another cleanup path already removed it.
-        }
-        catch (IOException)
-        {
-            // Keep directories containing anything other than the exact legacy layout.
-        }
     }
 
     private static void DeleteStagingDirectory(string directory)

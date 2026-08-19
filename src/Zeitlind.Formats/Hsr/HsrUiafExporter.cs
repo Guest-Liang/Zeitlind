@@ -10,7 +10,7 @@ public static class HsrUiafExporter
     private const uint MinimumObservedStatus = 1;
     private const uint MaximumObservedStatus = 3;
 
-    public static string Serialize(AchievementSnapshot snapshot, uint uid, IReadOnlySet<uint> knownAchievementIds)
+    public static string Serialize(AchievementSnapshot snapshot, ulong uid, IReadOnlySet<uint> knownAchievementIds)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(knownAchievementIds);

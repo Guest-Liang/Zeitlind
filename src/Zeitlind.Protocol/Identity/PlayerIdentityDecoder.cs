@@ -5,16 +5,11 @@ namespace Zeitlind.Protocol.Identity;
 
 public static class PlayerIdentityDecoder
 {
-    public const uint PlayerGetTokenScRspCommandId = 81;
+    private const uint PlayerGetTokenScRspCommandId = 81;
     private const uint LegacyPlayerGetTokenScRspCommandId = 91;
     private const uint UidFieldNumber = 15;
     private const uint MinimumPlausibleUid = 100_000_000;
     private const uint MaximumPlausibleUid = 999_999_999;
-
-    public static bool TryDecode(CapturedPacket packet, out uint uid)
-    {
-        return TryDecode(packet, out uid, out _);
-    }
 
     public static bool TryDecode(CapturedPacket packet, out uint uid, out uint fieldNumber)
     {

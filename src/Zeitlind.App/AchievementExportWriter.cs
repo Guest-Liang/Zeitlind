@@ -11,7 +11,7 @@ internal static class AchievementExportWriter
     public static async Task<ExportResult> WriteAsync(
         IGameModule module,
         AchievementSnapshot snapshot,
-        uint uid,
+        ulong? uid,
         AchievementCatalog catalog,
         ExportTarget target,
         string? configuredOutputDirectory,
@@ -27,6 +27,7 @@ internal static class AchievementExportWriter
             ExportTarget.AchievementBackup => "achievements",
             ExportTarget.Liyin => "liyin",
             ExportTarget.UiafExperimental => "uiaf",
+            ExportTarget.UiafV12 => "uiaf12",
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };
         var fileName = $"Zeitlind-{module.Descriptor.Id}-{format}-{stamp}.json";
@@ -37,6 +38,7 @@ internal static class AchievementExportWriter
             ExportTarget.UiafExperimental => module.Descriptor.Kind == Zeitlind.Core.Games.GameKind.GI
                 ? "UIAF v1.1"
                 : "Zeitlind 实验性 UIAF（非官方）",
+            ExportTarget.UiafV12 => "Zeitlind 实验性 UIAF v1.2（非官方）",
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };
         var content = module.Serialize(target, snapshot, uid, catalog);

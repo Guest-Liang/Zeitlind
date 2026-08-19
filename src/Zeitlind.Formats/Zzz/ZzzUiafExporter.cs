@@ -12,7 +12,7 @@ public static class ZzzUiafExporter
     private const uint UnfinishedStatus = 1;
     private const uint FinishedStatus = 2;
 
-    public static string Serialize(AchievementSnapshot snapshot, uint uid)
+    public static string Serialize(AchievementSnapshot snapshot, ulong uid)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentOutOfRangeException.ThrowIfZero(uid);

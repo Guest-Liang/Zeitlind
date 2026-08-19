@@ -19,7 +19,7 @@ internal static class ConsoleSelectionMenu
             throw new ArgumentOutOfRangeException(nameof(escapeSelection));
         }
 
-        var menuTop = Console.CursorTop;
+        var menuTop = ReserveMenuRows(options.Count);
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -45,6 +45,16 @@ internal static class ConsoleSelectionMenu
                     return cancel;
             }
         }
+    }
+
+    private static int ReserveMenuRows(int optionCount)
+    {
+        for (var index = 0; index < optionCount; index++)
+        {
+            Console.WriteLine();
+        }
+
+        return Math.Max(0, Console.CursorTop - optionCount);
     }
 
     private static void Render(IReadOnlyList<string> options, int selected, int menuTop)

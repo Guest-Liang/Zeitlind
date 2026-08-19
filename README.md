@@ -30,7 +30,7 @@ Zeitlind 是 Windows x64 下的游戏成就导出工具
 3. 在游戏菜单中选择注册表检测到的安装，或选择需要导出成就的游戏。菜单会直接显示每款游戏的注册表检测状态。
 4. 同意程序请求的 Windows 管理员权限。Zeitlind 会在提权后保留已选择的游戏、导出格式和输出目录。
 5. 正常登录并进入所选游戏。Zeitlind 捕获到完整成就响应与 UID 后，会请求本次启动的游戏正常退出；10 秒内没有退出时，才会强制关闭该游戏及其子进程。
-6. 选择需要导出的格式：备份、Liyin 或 UIAF。原神提供备份和正式 UIAF v1.1，没有 Liyin。
+6. 选择需要导出的格式：备份、Liyin 或 UIAF。原神提供备份、正式 UIAF v1.1 和实验性 UIAF v1.2，没有 Liyin。
 7. 导出成功后按 Enter 退出。等待成就数据时可按 `Ctrl+C` 取消。
 
 ```powershell
@@ -53,7 +53,7 @@ Zeitlind 是 Windows x64 下的游戏成就导出工具
 
 ```text
 Zeitlind.exe [--game "游戏目录或 exe 路径"]
-              [--format backup|liyin|uiaf]
+              [--format backup|liyin|uiaf|uiaf12]
               [--output "输出目录"]
 Zeitlind.exe --help
 Zeitlind.exe --version
@@ -76,6 +76,7 @@ Zeitlind.exe --version
 - `Zeitlind-<game>-achievements-日期时间.json`：Zeitlind v1 备份格式，保留游戏标识、协议探测信息、服务端记录及尚未解释的原始字段；
 - `Zeitlind-<game>-liyin-日期时间.json`：对应游戏的 Liyin 导入格式；
 - `Zeitlind-<game>-uiaf-日期时间.json`：星铁 / 绝区零为实验性 UIAF v1.2；原神为正式 UIAF v1.1。
+- `Zeitlind-gi-cn-uiaf12-日期时间.json`：原神实验性 UIAF v1.2（`hk4e` + UID）。
 
 > [!WARNING]
 > 程序日志位于可执行文件所在目录，文件名为 `Zeitlind-YYYY-MM-DD.log`。日志可能包含游戏路径、导出路径和 UID，并且不会自动删除；向他人分享日志前，请先检查其中是否包含不希望公开的个人信息。
@@ -86,6 +87,6 @@ Zeitlind.exe --version
 
 项目设计参考了 [Yae](https://github.com/HolographicHat/Yae)。感谢 HolographicHat 与 Yae 项目贡献者提供的实现思路。
 
-绝区零元数据来自 [zzz.liyin.space](https://github.com/Ticca-Liyin/zzz.liyin.space)，星铁元数据来自 [liyin.space](https://github.com/Ticca-Liyin/liyin.space)，原神成就目录来自 Yae `schicksal/metadata`。实验性成就交换格式参考 [UIAF](https://uigf.org/zh/standards/uiaf.html) 及其多游戏分组思路，[提案链接](https://github.com/orgs/UIGF-org/discussions/18)。原神导出使用正式 UIAF v1.1。
+绝区零元数据来自 [zzz.liyin.space](https://github.com/Ticca-Liyin/zzz.liyin.space)，星铁元数据来自 [liyin.space](https://github.com/Ticca-Liyin/liyin.space)，原神成就目录来自 Yae `schicksal/metadata`。实验性成就交换格式参考 [UIAF](https://uigf.org/zh/standards/uiaf.html) 及其多游戏分组思路，[提案链接](https://github.com/orgs/UIGF-org/discussions/18)。原神 `--format uiaf` 仍导出正式 UIAF v1.1；`--format uiaf12` 为带 UID 的实验性 v1.2。
 
 本仓库采用 GNU GPL v3，详见 [`LICENSE`](LICENSE)。

@@ -5,7 +5,7 @@ namespace Zeitlind.Formats.Zzz;
 
 public static class ZzzLiyinExporter
 {
-    public static string Serialize(AchievementSnapshot snapshot, uint uid)
+    public static string Serialize(AchievementSnapshot snapshot, ulong uid)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         return LiyinExporter.Serialize(snapshot, uid, snapshot.Records.Where(static record => record.IsCompleted));

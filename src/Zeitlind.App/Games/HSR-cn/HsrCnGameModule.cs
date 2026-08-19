@@ -48,18 +48,19 @@ internal sealed class HsrCnGameModule : IGameModule
         return new HsrCaptureAdapter(catalog, gameVersion);
     }
 
-    public string Serialize(ExportTarget target, AchievementSnapshot snapshot, uint uid, AchievementCatalog catalog)
+    public string Serialize(ExportTarget target, AchievementSnapshot snapshot, ulong? uid, AchievementCatalog catalog)
     {
+        var confirmedUid = uid ?? throw new InvalidOperationException("星穹铁道导出需要已确认的 UID");
         return target switch
         {
             ExportTarget.AchievementBackup => AchievementBackupExporter.Serialize(
                 snapshot,
-                uid,
+                confirmedUid,
                 catalog.LatestVersion,
                 catalog.Count
             ),
-            ExportTarget.Liyin => HsrLiyinExporter.Serialize(snapshot, uid, catalog.Ids),
-            ExportTarget.UiafExperimental => HsrUiafExporter.Serialize(snapshot, uid, catalog.Ids),
+            ExportTarget.Liyin => HsrLiyinExporter.Serialize(snapshot, confirmedUid, catalog.Ids),
+            ExportTarget.UiafExperimental => HsrUiafExporter.Serialize(snapshot, confirmedUid, catalog.Ids),
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };
     }
@@ -176,7 +177,7 @@ internal sealed class HsrCnGameModule : IGameModule
         };
 
         private readonly HsrAchievementSnapshotDecoder _decoder;
-        private readonly HsrPacketCaptureDiagnostics _diagnostics = new();
+        private readonly PacketCaptureDiagnostics _diagnostics = new();
 
         public HsrCaptureAdapter(AchievementCatalog catalog, string gameVersion)
         {
@@ -198,15 +199,19 @@ internal sealed class HsrCnGameModule : IGameModule
             _diagnostics.Observe(packet);
         }
 
-        public bool TryDecodeIdentity(CapturedPacket packet, out uint uid, out string detail)
+        public bool TryDecodeIdentity(CapturedPacket packet, out PlayerIdentityEvidence evidence)
         {
-            if (PlayerIdentityDecoder.TryDecode(packet, out uid, out var fieldNumber))
+            if (PlayerIdentityDecoder.TryDecode(packet, out var uid, out var fieldNumber))
             {
-                detail = $"命令 {packet.CommandId}，字段 {fieldNumber}";
+                evidence = new PlayerIdentityEvidence(
+                    uid,
+                    PlayerIdentityConfidence.Confirmed,
+                    $"命令 {packet.CommandId}，字段 {fieldNumber}"
+                );
                 return true;
             }
 
-            detail = string.Empty;
+            evidence = default;
             return false;
         }
 

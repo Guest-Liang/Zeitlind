@@ -106,18 +106,29 @@ internal static unsafe class GenshinPacketFrameParser
 
                     break;
                 case 1:
-                    offset += 8;
-                    break;
-                case 2:
-                    if (!TryReadVarint(header, ref offset, out var len) || len > int.MaxValue)
+                    if (!TryAdvance(header, ref offset, sizeof(ulong)))
                     {
                         return false;
                     }
 
-                    offset += (int)len;
+                    break;
+                case 2:
+                    if (
+                        !TryReadVarint(header, ref offset, out var len)
+                        || len > int.MaxValue
+                        || !TryAdvance(header, ref offset, (int)len)
+                    )
+                    {
+                        return false;
+                    }
+
                     break;
                 case 5:
-                    offset += 4;
+                    if (!TryAdvance(header, ref offset, sizeof(uint)))
+                    {
+                        return false;
+                    }
+
                     break;
                 default:
                     return false;
@@ -130,6 +141,17 @@ internal static unsafe class GenshinPacketFrameParser
         }
 
         return false;
+    }
+
+    private static bool TryAdvance(ReadOnlySpan<byte> span, ref int offset, int count)
+    {
+        if ((uint)offset > (uint)span.Length || count < 0 || count > span.Length - offset)
+        {
+            return false;
+        }
+
+        offset += count;
+        return true;
     }
 
     private static bool TryReadVarint(ReadOnlySpan<byte> span, ref int offset, out ulong value)

@@ -3,7 +3,7 @@ using Zeitlind.Protocol.Capture;
 
 namespace Zeitlind.App.Games;
 
-internal sealed class HsrPacketCaptureDiagnostics
+internal sealed class PacketCaptureDiagnostics
 {
     private readonly Dictionary<uint, CommandStatistics> _commands = [];
 

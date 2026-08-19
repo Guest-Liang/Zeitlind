@@ -48,7 +48,7 @@ internal sealed class GiCnGameModule : IGameModule
         return new GiCaptureAdapter(catalog, gameVersion);
     }
 
-    public string Serialize(ExportTarget target, AchievementSnapshot snapshot, uint uid, AchievementCatalog catalog)
+    public string Serialize(ExportTarget target, AchievementSnapshot snapshot, ulong? uid, AchievementCatalog catalog)
     {
         return target switch
         {
@@ -59,7 +59,10 @@ internal sealed class GiCnGameModule : IGameModule
                 catalog.Count
             ),
             ExportTarget.UiafExperimental => GenshinUiafExporter.Serialize(snapshot, ApplicationBuildInfo.Version),
-            ExportTarget.Liyin => throw new InvalidDataException("原神国服不支持 Liyin 导出，请使用 backup 或 uiaf"),
+            ExportTarget.UiafV12 => GenshinUiafV12Exporter.Serialize(snapshot, uid),
+            ExportTarget.Liyin => throw new InvalidDataException(
+                "原神国服不支持 Liyin 导出，请使用 backup、uiaf 或 uiaf12"
+            ),
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };
     }
@@ -75,6 +78,7 @@ internal sealed class GiCnGameModule : IGameModule
             ExportTarget.AchievementBackup =>
                 $"导出完成：保留服务端返回的 {snapshot.Records.Count} 条原神成就记录，其中 {completed} 条已完成",
             ExportTarget.UiafExperimental => $"导出完成：写入 UIAF v1.1 的 {uiaf} 条原神成就记录",
+            ExportTarget.UiafV12 => $"导出完成：写入实验性 UIAF v1.2 的 {uiaf} 条原神成就记录",
             ExportTarget.Liyin => throw new InvalidDataException("原神国服不支持 Liyin 导出"),
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };
@@ -168,7 +172,7 @@ internal sealed class GiCnGameModule : IGameModule
         private static readonly GenshinAchievementProtocolProfile Profile = new()
         {
             FullSnapshotCommandId = 29910,
-            RecordFieldPath = "$.1[]",
+            RecordFieldPath = "$.5[]",
             IdFieldNumber = 5,
             StatusFieldNumber = 8,
             FinishTimestampFieldNumber = 2,
@@ -177,14 +181,16 @@ internal sealed class GiCnGameModule : IGameModule
         };
 
         private readonly GenshinAchievementSnapshotDecoder _decoder;
-        private readonly HsrPacketCaptureDiagnostics _diagnostics = new();
+        private readonly PacketCaptureDiagnostics _diagnostics = new();
 
         public GiCaptureAdapter(AchievementCatalog catalog, string gameVersion)
         {
             _decoder = new GenshinAchievementSnapshotDecoder(catalog, gameVersion, Profile);
         }
 
-        public string StartInstruction => "请正常登录并打开成就页面；Zeitlind 会等待原神完整成就快照和登录 UID";
+        public string StartInstruction => "请正常登录并打开成就页面；Zeitlind 会等待原神完整成就快照和当前 UID";
+
+        public bool CanExportWithoutConfirmedUid => true;
 
         public void OnHookReady(HookReadyMessage message)
         {
@@ -199,14 +205,14 @@ internal sealed class GiCnGameModule : IGameModule
             _diagnostics.Observe(packet);
         }
 
-        public bool TryDecodeIdentity(CapturedPacket packet, out uint uid, out string detail)
+        public bool TryDecodeIdentity(CapturedPacket packet, out PlayerIdentityEvidence evidence)
         {
-            if (GenshinPlayerIdentityDecoder.TryDecode(packet, out uid, out detail))
+            if (GenshinPlayerIdentityDecoder.TryDecode(packet, out evidence))
             {
                 return true;
             }
 
-            detail = string.Empty;
+            evidence = default;
             return false;
         }
 

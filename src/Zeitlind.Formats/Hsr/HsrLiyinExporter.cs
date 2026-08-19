@@ -5,7 +5,7 @@ namespace Zeitlind.Formats.Hsr;
 
 public static class HsrLiyinExporter
 {
-    public static string Serialize(AchievementSnapshot snapshot, uint uid, IReadOnlySet<uint> knownAchievementIds)
+    public static string Serialize(AchievementSnapshot snapshot, ulong uid, IReadOnlySet<uint> knownAchievementIds)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(knownAchievementIds);

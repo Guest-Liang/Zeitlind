@@ -22,8 +22,6 @@ internal static class ExportSelectionFlow
         if (configuredTarget is { } target)
         {
             EnsureSupported(module, target);
-            ApplicationLog.WriteInfo($"导出格式来源：命令行 --format {ToCliValue(target)}");
-            WarnIfExperimental(module, target);
             return target;
         }
 
@@ -45,6 +43,13 @@ internal static class ExportSelectionFlow
         return target;
     }
 
+    public static void ValidateConfiguredTarget(IGameModule module, ExportTarget target)
+    {
+        EnsureSupported(module, target);
+        ApplicationLog.WriteInfo($"导出格式来源：命令行 --format {ToCliValue(target)}");
+        WarnIfExperimental(module, target);
+    }
+
     public static string ToCliValue(ExportTarget target)
     {
         return target switch
@@ -52,6 +57,7 @@ internal static class ExportSelectionFlow
             ExportTarget.AchievementBackup => "backup",
             ExportTarget.Liyin => "liyin",
             ExportTarget.UiafExperimental => "uiaf",
+            ExportTarget.UiafV12 => "uiaf12",
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };
     }
@@ -62,7 +68,8 @@ internal static class ExportSelectionFlow
             ?
             [
                 new(ExportTarget.AchievementBackup, "Zeitlind 成就数据备份（保留全部原始字段）"),
-                new(ExportTarget.UiafExperimental, "UIAF v1.1（原神正式格式）"),
+                new(ExportTarget.UiafExperimental, "UIAF v1.1"),
+                new(ExportTarget.UiafV12, "Zeitlind 实验性 UIAF v1.2"),
             ]
             : Options;
     }
@@ -71,15 +78,25 @@ internal static class ExportSelectionFlow
     {
         if (module.Descriptor.Kind == GameKind.GI && target == ExportTarget.Liyin)
         {
-            throw new InvalidDataException("原神国服不支持 --format liyin，请使用 backup 或 uiaf");
+            throw new InvalidDataException("原神国服不支持 --format liyin，请使用 backup、uiaf 或 uiaf12");
+        }
+
+        if (module.Descriptor.Kind != GameKind.GI && target == ExportTarget.UiafV12)
+        {
+            throw new InvalidDataException(
+                $"{module.Descriptor.DisplayName} 请使用 --format uiaf 导出实验性 UIAF v1.2"
+            );
         }
     }
 
     private static void WarnIfExperimental(IGameModule module, ExportTarget target)
     {
-        if (target == ExportTarget.UiafExperimental && module.Descriptor.Kind != GameKind.GI)
+        if (
+            target == ExportTarget.UiafV12
+            || (target == ExportTarget.UiafExperimental && module.Descriptor.Kind != GameKind.GI)
+        )
         {
-            ApplicationLog.WriteWarning("提示：现行正式 UIAF 尚未定义v1.2；Zeitlind 目前导出为实验性支持");
+            ApplicationLog.WriteWarning("提示：现行正式 UIAF 尚未定义 v1.2；Zeitlind 目前导出为实验性支持");
             ApplicationLog.WriteWarning("可查看 https://github.com/orgs/UIGF-org/discussions/18 以获取更多信息");
         }
     }
@@ -92,4 +109,5 @@ internal enum ExportTarget
     AchievementBackup,
     Liyin,
     UiafExperimental,
+    UiafV12,
 }

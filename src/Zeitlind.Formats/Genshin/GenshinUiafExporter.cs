@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Zeitlind.Core.Achievements;
+using Zeitlind.Formats.Uiaf;
 
 namespace Zeitlind.Formats.Genshin;
 
@@ -30,7 +31,7 @@ public static class GenshinUiafExporter
         return JsonSerializer.Serialize(document, GenshinUiafJsonContext.Default.UiafDocument);
     }
 
-    private static bool ShouldExport(AchievementRecord record)
+    internal static bool ShouldExport(AchievementRecord record)
     {
         var status = MapStatus(record);
         var current = record.Progress ?? 0;
@@ -44,11 +45,11 @@ public static class GenshinUiafExporter
             Id = record.Id,
             Current = (uint)Math.Min(record.Progress ?? 0, uint.MaxValue),
             Status = MapStatus(record),
-            Timestamp = record.FinishTimestamp is > 0 and <= uint.MaxValue ? (uint)record.FinishTimestamp.Value : 0,
+            Timestamp = UiafExportContract.NormalizeTimestamp(record.FinishTimestamp),
         };
     }
 
-    private static uint MapStatus(AchievementRecord record)
+    internal static uint MapStatus(AchievementRecord record)
     {
         if (record.Status is >= Unfinished and <= RewardTaken)
         {
@@ -95,7 +96,7 @@ internal sealed class UiafAchievement
     public required uint Status { get; init; }
 
     [JsonPropertyName("timestamp")]
-    public required uint Timestamp { get; init; }
+    public required long Timestamp { get; init; }
 }
 
 [JsonSourceGenerationOptions(WriteIndented = true)]

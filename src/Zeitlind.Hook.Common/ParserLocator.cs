@@ -53,11 +53,6 @@ public static unsafe class ParserLocator
         public bool ComparesMagic;
     }
 
-    public static ParserLocation Locate(nint moduleBase, uint headMagic, uint tailMagic)
-    {
-        return Locate(moduleBase, "GameAssembly.dll", headMagic, tailMagic);
-    }
-
     public static ParserLocation Locate(nint moduleBase, string moduleName, uint headMagic, uint tailMagic)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);

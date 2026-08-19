@@ -7,10 +7,9 @@ namespace Zeitlind.Formats.Backup;
 
 public static class AchievementBackupExporter
 {
-    public static string Serialize(AchievementSnapshot snapshot, uint uid, string metadataVersion, int metadataCount)
+    public static string Serialize(AchievementSnapshot snapshot, ulong? uid, string metadataVersion, int metadataCount)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
-        ArgumentOutOfRangeException.ThrowIfZero(uid);
 
         var document = new AchievementBackupDocument
         {
@@ -85,7 +84,7 @@ internal sealed class AchievementBackupDocument
     public required string Game { get; init; }
 
     [JsonPropertyName("uid")]
-    public required uint Uid { get; init; }
+    public required ulong? Uid { get; init; }
 
     [JsonPropertyName("captured_at")]
     public required DateTimeOffset CapturedAt { get; init; }

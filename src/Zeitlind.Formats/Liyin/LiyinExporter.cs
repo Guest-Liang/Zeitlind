@@ -8,7 +8,7 @@ internal static class LiyinExporter
 {
     public static string Serialize(
         AchievementSnapshot snapshot,
-        uint uid,
+        ulong uid,
         IEnumerable<AchievementRecord> completedRecords
     )
     {
@@ -52,7 +52,7 @@ internal sealed class LiyinInfo
     public required long ExportTimestamp { get; init; }
 
     [JsonPropertyName("uid")]
-    public required uint Uid { get; init; }
+    public required ulong Uid { get; init; }
 }
 
 internal sealed class LiyinAchievement
