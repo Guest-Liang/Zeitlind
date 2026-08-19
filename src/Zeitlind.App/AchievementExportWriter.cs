@@ -34,7 +34,9 @@ internal static class AchievementExportWriter
         {
             ExportTarget.AchievementBackup => "Zeitlind 成就数据备份",
             ExportTarget.Liyin => "Zeitlind Liyin JSON",
-            ExportTarget.UiafExperimental => "Zeitlind 实验性 UIAF（非官方）",
+            ExportTarget.UiafExperimental => module.Descriptor.Kind == Zeitlind.Core.Games.GameKind.GI
+                ? "UIAF v1.1"
+                : "Zeitlind 实验性 UIAF（非官方）",
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };
         var content = module.Serialize(target, snapshot, uid, catalog);

@@ -54,7 +54,8 @@ internal interface IGameCaptureAdapter
 
 internal static class GameRegistry
 {
-    public static IReadOnlyList<IGameModule> All { get; } = [ZzzCnGameModule.Instance, HsrCnGameModule.Instance];
+    public static IReadOnlyList<IGameModule> All { get; } =
+    [ZzzCnGameModule.Instance, HsrCnGameModule.Instance, GiCnGameModule.Instance];
 
     public static IGameModule ByKind(GameKind kind)
     {

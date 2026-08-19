@@ -84,7 +84,7 @@ internal static class GameSelectionFlow
                 {
                     selectedPath = GameExecutablePicker.Pick(
                         "Zeitlind 支持的",
-                        "ZenlessZoneZero.exe 或 StarRail.exe",
+                        "ZenlessZoneZero.exe、StarRail.exe 或 YuanShen.exe",
                         statuses
                             .Select(static status => status.ExecutablePath)
                             .FirstOrDefault(static path => path is not null)

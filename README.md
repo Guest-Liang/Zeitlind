@@ -12,6 +12,7 @@ Zeitlind 是 Windows x64 下的游戏成就导出工具
 支持情况：
 | 游戏 | 国服 | 国际服 |
 | --- | --- | --- |
+| 原神 | 🟢 | 🔴 |
 | 崩坏：星穹铁道 |  🟢 | 🔴 |
 | 绝区零 | 🟢 | 🔴 |
 
@@ -28,8 +29,8 @@ Zeitlind 是 Windows x64 下的游戏成就导出工具
 2. 双击运行本程序。
 3. 在游戏菜单中选择注册表检测到的安装，或选择需要导出成就的游戏。菜单会直接显示每款游戏的注册表检测状态。
 4. 同意程序请求的 Windows 管理员权限。Zeitlind 会在提权后保留已选择的游戏、导出格式和输出目录。
-5. 正常登录并进入所选游戏。Zeitlind 捕获到完整成就响应与 UID 后，会先请求本次启动的游戏正常退出；10 秒内没有退出时，才会强制关闭该游戏及其子进程。
-6. 选择需要导出的格式：备份、Liyin 或 UIAF。
+5. 正常登录并进入所选游戏。Zeitlind 捕获到完整成就响应与 UID 后，会请求本次启动的游戏正常退出；10 秒内没有退出时，才会强制关闭该游戏及其子进程。
+6. 选择需要导出的格式：备份、Liyin 或 UIAF。原神提供备份和正式 UIAF v1.1，没有 Liyin。
 7. 导出成功后按 Enter 退出。等待成就数据时可按 `Ctrl+C` 取消。
 
 ```powershell
@@ -38,6 +39,9 @@ Zeitlind 是 Windows x64 下的游戏成就导出工具
 
 # 直接指定 EXE
 .\Zeitlind_<version>_Release.exe --game "D:\Games\Star Rail\Games\StarRail.exe"
+
+# 原神国服
+.\Zeitlind_<version>_Release.exe --game "D:\Games\Genshin Impact Game\YuanShen.exe" --format uiaf
 
 # 非交互导出；目标目录不存在时会自动创建
 .\Zeitlind_<version>_Release.exe --game "D:\Games\Star Rail\Games\StarRail.exe" `
@@ -63,6 +67,7 @@ Zeitlind.exe --version
 |---|---|---|
 | 绝区零国服 | `ZenlessZoneZero.exe` | `HKCU\Software\miHoYo\HYP\1_1\nap_cn\GameInstallPath` |
 | 崩坏：星穹铁道国服 | `StarRail.exe` | `HKCU\Software\miHoYo\HYP\1_1\hkrpg_cn\GameInstallPath` |
+| 原神国服 | `YuanShen.exe` | `HKCU\Software\miHoYo\HYP\1_1\hk4e_cn\GameInstallPath` |
 
 ## 导出格式
 
@@ -70,7 +75,7 @@ Zeitlind.exe --version
 
 - `Zeitlind-<game>-achievements-日期时间.json`：Zeitlind v1 备份格式，保留游戏标识、协议探测信息、服务端记录及尚未解释的原始字段；
 - `Zeitlind-<game>-liyin-日期时间.json`：对应游戏的 Liyin 导入格式；
-- `Zeitlind-<game>-uiaf-日期时间.json`：对应游戏的 UIAF 实验格式。
+- `Zeitlind-<game>-uiaf-日期时间.json`：星铁 / 绝区零为实验性 UIAF v1.2；原神为正式 UIAF v1.1。
 
 > [!WARNING]
 > 程序日志位于可执行文件所在目录，文件名为 `Zeitlind-YYYY-MM-DD.log`。日志可能包含游戏路径、导出路径和 UID，并且不会自动删除；向他人分享日志前，请先检查其中是否包含不希望公开的个人信息。
@@ -81,6 +86,6 @@ Zeitlind.exe --version
 
 项目设计参考了 [Yae](https://github.com/HolographicHat/Yae)。感谢 HolographicHat 与 Yae 项目贡献者提供的实现思路。
 
-绝区零元数据来自 [zzz.liyin.space](https://github.com/Ticca-Liyin/zzz.liyin.space)，星铁元数据来自 [liyin.space](https://github.com/Ticca-Liyin/liyin.space)。实验性成就交换格式参考 [UIAF](https://uigf.org/zh/standards/uiaf.html) 及其多游戏分组思路，[提案链接](https://github.com/orgs/UIGF-org/discussions/18)。
+绝区零元数据来自 [zzz.liyin.space](https://github.com/Ticca-Liyin/zzz.liyin.space)，星铁元数据来自 [liyin.space](https://github.com/Ticca-Liyin/liyin.space)，原神成就目录来自 Yae `schicksal/metadata`。实验性成就交换格式参考 [UIAF](https://uigf.org/zh/standards/uiaf.html) 及其多游戏分组思路，[提案链接](https://github.com/orgs/UIGF-org/discussions/18)。原神导出使用正式 UIAF v1.1。
 
 本仓库采用 GNU GPL v3，详见 [`LICENSE`](LICENSE)。

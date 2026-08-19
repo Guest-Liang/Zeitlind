@@ -4,7 +4,7 @@ using System.Text;
 namespace Zeitlind.Hook.Common;
 
 /// <summary>
-/// 明文包解析器在 GameAssembly.dll 中的位置，以及可以安全覆盖的入口字节数。
+/// 明文包解析器在目标模块中的位置，以及可以安全覆盖的入口字节数。
 /// </summary>
 public readonly record struct ParserLocation(nint Address, uint Rva, int PatchSize);
 
@@ -55,11 +55,17 @@ public static unsafe class ParserLocator
 
     public static ParserLocation Locate(nint moduleBase, uint headMagic, uint tailMagic)
     {
-        var pe = PeImage.Open(moduleBase, "GameAssembly.dll");
+        return Locate(moduleBase, "GameAssembly.dll", headMagic, tailMagic);
+    }
+
+    public static ParserLocation Locate(nint moduleBase, string moduleName, uint headMagic, uint tailMagic)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);
+        var pe = PeImage.Open(moduleBase, moduleName);
         var image = pe.Image;
         if (!pe.TryGetDataDirectory(3, out var exceptionRva, out var exceptionSize))
         {
-            throw new InvalidDataException("GameAssembly.dll 没有异常目录，无法还原函数边界");
+            throw new InvalidDataException($"{moduleName} 没有异常目录，无法还原函数边界");
         }
 
         if (
@@ -69,7 +75,7 @@ public static unsafe class ParserLocator
             || !pe.ContainsRange(exceptionRva, exceptionSize)
         )
         {
-            throw new InvalidDataException("GameAssembly.dll 的异常目录范围无效，无法还原函数边界");
+            throw new InvalidDataException($"{moduleName} 的异常目录范围无效，无法还原函数边界");
         }
 
         var functionTable = pe.GetPointer(exceptionRva, exceptionSize, "异常目录");

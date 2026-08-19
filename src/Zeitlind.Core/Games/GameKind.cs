@@ -4,4 +4,5 @@ public enum GameKind
 {
     ZZZ,
     HSR,
+    GI,
 }

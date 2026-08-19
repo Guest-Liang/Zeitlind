@@ -16,5 +16,9 @@
       Include="Metadata\HsrAchievementInfo.json"
       LogicalName="Zeitlind.Metadata.Hsr.AchievementInfo.json"
     />
+    <EmbeddedResource
+      Include="Metadata\GenshinAchievementInfo.json"
+      LogicalName="Zeitlind.Metadata.Genshin.AchievementInfo.json"
+    />
   </ItemGroup>
 </Project>

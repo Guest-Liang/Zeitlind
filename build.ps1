@@ -10,11 +10,13 @@ $projectRoot = (Resolve-Path -LiteralPath $PSScriptRoot).Path
 $solutionPath = Join-Path $projectRoot "Zeitlind.slnx"
 $zzzHookProject = Join-Path $projectRoot "src\Zeitlind.Hook.Zzz\Zeitlind.Hook.Zzz.csproj"
 $hsrHookProject = Join-Path $projectRoot "src\Zeitlind.Hook.Hsr\Zeitlind.Hook.Hsr.csproj"
+$genshinHookProject = Join-Path $projectRoot "src\Zeitlind.Hook.Genshin\Zeitlind.Hook.Genshin.csproj"
 $appProject = Join-Path $projectRoot "src\Zeitlind.App\Zeitlind.App.csproj"
 $versionSourcePath = Join-Path $projectRoot "src\Zeitlind.App\ApplicationBuildInfo.cs"
 $intermediateOutput = Join-Path $projectRoot "artifacts\intermediate"
 $zzzHookOutput = Join-Path $intermediateOutput "hook-zzz"
 $hsrHookOutput = Join-Path $intermediateOutput "hook-hsr"
+$genshinHookOutput = Join-Path $intermediateOutput "hook-ys"
 $appOutput = Join-Path $intermediateOutput "app"
 $preparedOutput = Join-Path $intermediateOutput "prepared"
 $buildOutput = Join-Path $projectRoot "artifacts\build"
@@ -151,6 +153,7 @@ $windowsFileVersion = "$($applicationVersion -replace '-.*$', '').0"
 Reset-OutputDirectory -Path $intermediateOutput
 New-Item -ItemType Directory -Path $zzzHookOutput | Out-Null
 New-Item -ItemType Directory -Path $hsrHookOutput | Out-Null
+New-Item -ItemType Directory -Path $genshinHookOutput | Out-Null
 New-Item -ItemType Directory -Path $appOutput | Out-Null
 New-Item -ItemType Directory -Path $preparedOutput | Out-Null
 
@@ -191,6 +194,22 @@ if (-not (Test-Path -LiteralPath $hsrHookBinary -PathType Leaf)) {
     throw "The HSR NativeAOT Hook library was not produced at '$hsrHookBinary'."
 }
 
+Write-Host "Building Genshin Hook (Release)..."
+& dotnet publish $genshinHookProject `
+    --configuration Release `
+    --runtime win-x64 `
+    --self-contained true `
+    --no-restore `
+    --output $genshinHookOutput
+if ($LASTEXITCODE -ne 0) {
+    throw "Building the Genshin Hook library failed with exit code $LASTEXITCODE."
+}
+
+$genshinHookBinary = Join-Path $genshinHookOutput "Zeitlind.Hook.Genshin.dll"
+if (-not (Test-Path -LiteralPath $genshinHookBinary -PathType Leaf)) {
+    throw "The Genshin NativeAOT Hook library was not produced at '$genshinHookBinary'."
+}
+
 foreach ($currentConfiguration in $configurations) {
     Reset-OutputDirectory -Path $appOutput
     Write-Host "Building $currentConfiguration Host..."
@@ -203,6 +222,7 @@ foreach ($currentConfiguration in $configurations) {
         --output $appOutput `
         "-p:ZzzHookBinaryPath=$zzzHookBinary" `
         "-p:HsrHookBinaryPath=$hsrHookBinary" `
+        "-p:GenshinHookBinaryPath=$genshinHookBinary" `
         "-p:RequireEmbeddedHook=true" `
         "-p:Version=$applicationVersion" `
         "-p:AssemblyVersion=$windowsFileVersion" `

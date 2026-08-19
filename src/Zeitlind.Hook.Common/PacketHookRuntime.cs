@@ -12,10 +12,11 @@ public sealed class PacketHookState
         uint headMagic,
         uint tailMagic,
         nint detour,
-        Action<nint> assignOriginal
+        Action<nint> assignOriginal,
+        string moduleName = "GameAssembly.dll"
     )
     {
-        var located = PacketHookLocator.WaitForParser(timeout, headMagic, tailMagic);
+        var located = PacketHookLocator.WaitForParser(timeout, headMagic, tailMagic, moduleName);
         Install(located.Parser, detour, assignOriginal);
         return new PacketHookInstallation(located.ModuleBase, located.Parser.Rva);
     }
@@ -75,11 +76,13 @@ public static class PacketHookLocator
     public static (nint ModuleBase, ParserLocation Parser) WaitForParser(
         TimeSpan timeout,
         uint headMagic,
-        uint tailMagic
+        uint tailMagic,
+        string moduleName = "GameAssembly.dll"
     )
     {
-        var moduleBase = LoadedModule.WaitFor("GameAssembly.dll", timeout);
-        var parser = ParserLocator.Locate(moduleBase, headMagic, tailMagic);
+        ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);
+        var moduleBase = LoadedModule.WaitFor(moduleName, timeout);
+        var parser = ParserLocator.Locate(moduleBase, moduleName, headMagic, tailMagic);
         return (moduleBase, parser);
     }
 }

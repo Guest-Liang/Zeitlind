@@ -13,6 +13,7 @@ public readonly unsafe struct PeImage
 
     private PeImage(
         byte* image,
+        string moduleName,
         byte* optionalHeader,
         uint optionalHeaderSize,
         byte* sectionTable,
@@ -21,6 +22,7 @@ public readonly unsafe struct PeImage
     )
     {
         Image = image;
+        ModuleName = moduleName;
         _optionalHeader = optionalHeader;
         _optionalHeaderSize = optionalHeaderSize;
         _sectionTable = sectionTable;
@@ -29,6 +31,8 @@ public readonly unsafe struct PeImage
     }
 
     public byte* Image { get; }
+
+    public string ModuleName { get; }
 
     public int SectionCount { get; }
 
@@ -43,7 +47,7 @@ public readonly unsafe struct PeImage
     {
         if (!ContainsRange(rva, size))
         {
-            throw new InvalidDataException($"{description} 超出 GameAssembly.dll 映像边界");
+            throw new InvalidDataException($"{description} 超出 {ModuleName} 映像边界");
         }
 
         return Image + rva;
@@ -166,6 +170,7 @@ public readonly unsafe struct PeImage
 
         return new PeImage(
             image,
+            moduleName,
             optionalHeader,
             optionalHeaderSize,
             image + sectionTableOffset,

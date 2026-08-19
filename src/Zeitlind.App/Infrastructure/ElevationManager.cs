@@ -40,6 +40,7 @@ internal static class ElevationManager
             startInfo.ArgumentList.Add("--output");
             startInfo.ArgumentList.Add(Path.GetFullPath(outputDirectory));
         }
+
         ApplicationLog.WriteInfo(
             $"准备请求管理员权限：程序 {executablePath}；"
                 + $"工作目录 {startInfo.WorkingDirectory}；"

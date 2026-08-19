@@ -8,6 +8,7 @@ public sealed record AchievementCatalog
 {
     private const string ZzzResourceName = "Zeitlind.Metadata.Zzz.AchievementInfo.json";
     private const string HsrResourceName = "Zeitlind.Metadata.Hsr.AchievementInfo.json";
+    private const string GenshinResourceName = "Zeitlind.Metadata.Genshin.AchievementInfo.json";
 
     public required GameKind Game { get; init; }
 
@@ -19,7 +20,13 @@ public sealed record AchievementCatalog
 
     public static AchievementCatalog LoadBundled(GameKind game)
     {
-        var resourceName = game == GameKind.ZZZ ? ZzzResourceName : HsrResourceName;
+        var resourceName = game switch
+        {
+            GameKind.ZZZ => ZzzResourceName,
+            GameKind.HSR => HsrResourceName,
+            GameKind.GI => GenshinResourceName,
+            _ => throw new ArgumentOutOfRangeException(nameof(game), game, "未知游戏"),
+        };
         var assembly = typeof(AchievementCatalog).Assembly;
         using var stream =
             assembly.GetManifestResourceStream(resourceName)
@@ -45,6 +52,10 @@ public sealed record AchievementCatalog
             if (game == GameKind.HSR)
             {
                 ValidateHsrEntry(property, id, ids);
+            }
+            else if (game == GameKind.GI)
+            {
+                ValidateGenshinEntry(id, ids);
             }
             else if (!ids.Add(id))
             {
@@ -74,7 +85,7 @@ public sealed record AchievementCatalog
             }
         }
 
-        var minimumCount = game == GameKind.HSR ? 1_000 : 100;
+        var minimumCount = game is GameKind.HSR or GameKind.GI ? 1_000 : 100;
         if (ids.Count < minimumCount)
         {
             throw new InvalidDataException($"{game} 内嵌元数据仅有 {ids.Count} 个 ID，疑似不完整");
@@ -103,6 +114,14 @@ public sealed record AchievementCatalog
         )
         {
             throw new InvalidDataException($"HSR 元数据条目 {property.Name} 缺少匹配的 AchievementID");
+        }
+    }
+
+    private static void ValidateGenshinEntry(uint id, ISet<uint> ids)
+    {
+        if (id is < 80_000 or > 89_999 || !ids.Add(id))
+        {
+            throw new InvalidDataException("原神元数据含无效或重复的成就 ID");
         }
     }
 }

@@ -1,5 +1,6 @@
 using Zeitlind.App.Games;
 using Zeitlind.App.Infrastructure;
+using Zeitlind.Core.Games;
 
 namespace Zeitlind.App;
 
@@ -20,8 +21,9 @@ internal static class ExportSelectionFlow
     {
         if (configuredTarget is { } target)
         {
+            EnsureSupported(module, target);
             ApplicationLog.WriteInfo($"导出格式来源：命令行 --format {ToCliValue(target)}");
-            WarnIfExperimental(target);
+            WarnIfExperimental(module, target);
             return target;
         }
 
@@ -33,12 +35,13 @@ internal static class ExportSelectionFlow
 
         Console.WriteLine();
         ApplicationLog.WriteInfo($"请选择 {module.Descriptor.DisplayName} 导出格式（↑/↓ 选择，Enter 确认）：");
-        var labels = Options.Select(static option => option.Label).ToArray();
+        var options = OptionsFor(module);
+        var labels = options.Select(static option => option.Label).ToArray();
         var selected = ConsoleSelectionMenu.Read(labels, 0, cancellationToken);
-        var option = Options[selected];
+        var option = options[selected];
         ApplicationLog.WriteInfo($"已选择：{option.Label}");
         target = option.Target;
-        WarnIfExperimental(target);
+        WarnIfExperimental(module, target);
         return target;
     }
 
@@ -53,9 +56,28 @@ internal static class ExportSelectionFlow
         };
     }
 
-    private static void WarnIfExperimental(ExportTarget target)
+    private static ExportOption[] OptionsFor(IGameModule module)
     {
-        if (target == ExportTarget.UiafExperimental)
+        return module.Descriptor.Kind == GameKind.GI
+            ?
+            [
+                new(ExportTarget.AchievementBackup, "Zeitlind 成就数据备份（保留全部原始字段）"),
+                new(ExportTarget.UiafExperimental, "UIAF v1.1（原神正式格式）"),
+            ]
+            : Options;
+    }
+
+    private static void EnsureSupported(IGameModule module, ExportTarget target)
+    {
+        if (module.Descriptor.Kind == GameKind.GI && target == ExportTarget.Liyin)
+        {
+            throw new InvalidDataException("原神国服不支持 --format liyin，请使用 backup 或 uiaf");
+        }
+    }
+
+    private static void WarnIfExperimental(IGameModule module, ExportTarget target)
+    {
+        if (target == ExportTarget.UiafExperimental && module.Descriptor.Kind != GameKind.GI)
         {
             ApplicationLog.WriteWarning("提示：现行正式 UIAF 尚未定义v1.2；Zeitlind 目前导出为实验性支持");
             ApplicationLog.WriteWarning("可查看 https://github.com/orgs/UIGF-org/discussions/18 以获取更多信息");

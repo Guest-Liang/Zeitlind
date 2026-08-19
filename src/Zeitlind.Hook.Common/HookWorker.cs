@@ -28,7 +28,7 @@ public static class HookWorker
         }
         catch (OperationCanceledException)
         {
-            // GameAssembly.dll 加载前的正常退出
+            // 目标模块加载前的正常退出
         }
         catch (Exception exception)
         {

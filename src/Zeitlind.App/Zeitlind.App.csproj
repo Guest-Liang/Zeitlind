@@ -38,17 +38,21 @@
     <EmbeddedResource Include="$(HsrHookBinaryPath)" LogicalName="Zeitlind.Hooks.hsr.dll" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(GenshinHookBinaryPath)' != '' and Exists('$(GenshinHookBinaryPath)')">
+    <EmbeddedResource Include="$(GenshinHookBinaryPath)" LogicalName="Zeitlind.Hooks.gi.dll" />
+  </ItemGroup>
+
   <Target
     Name="ValidateEmbeddedHook"
     BeforeTargets="PrepareForPublish"
     Condition="'$(RequireEmbeddedHook)' == 'true'"
   >
     <Error
-      Condition="'$(ZzzHookBinaryPath)' == '' or '$(HsrHookBinaryPath)' == ''"
-      Text="ZzzHookBinaryPath and HsrHookBinaryPath must point to the published NativeAOT hook libraries."
+      Condition="'$(ZzzHookBinaryPath)' == '' or '$(HsrHookBinaryPath)' == '' or '$(GenshinHookBinaryPath)' == ''"
+      Text="ZzzHookBinaryPath, HsrHookBinaryPath and GenshinHookBinaryPath must point to the published NativeAOT hook libraries."
     />
     <Error
-      Condition="!Exists('$(ZzzHookBinaryPath)') or !Exists('$(HsrHookBinaryPath)')"
+      Condition="!Exists('$(ZzzHookBinaryPath)') or !Exists('$(HsrHookBinaryPath)') or !Exists('$(GenshinHookBinaryPath)')"
       Text="One or more required Zeitlind hook libraries were not found."
     />
   </Target>

@@ -30,7 +30,7 @@ internal static class ExporterApplication
             return UserRequestedExitCode;
         }
 
-        ApplicationLog.WriteInfo("Zeitlind — 绝区零与崩坏：星穹铁道成就导出");
+        ApplicationLog.WriteInfo("Zeitlind — 绝区零、崩坏：星穹铁道与原神成就导出");
         ApplicationLog.WriteInfo("https://github.com/Guest-Liang/Zeitlind");
         Console.WriteLine();
         ApplicationLog.WriteWarning(
@@ -241,7 +241,7 @@ internal static class ExporterApplication
     private static void WriteUsage(bool writeAsError = true)
     {
         const string usage =
-            "用法：Zeitlind.exe [--game \"游戏目录或 ZenlessZoneZero.exe/StarRail.exe\"] "
+            "用法：Zeitlind.exe [--game \"游戏目录或 ZenlessZoneZero.exe/StarRail.exe/YuanShen.exe\"] "
             + "[--format backup|liyin|uiaf] [--output \"输出目录\"]";
         if (writeAsError)
         {
