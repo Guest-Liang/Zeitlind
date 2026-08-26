@@ -8,19 +8,11 @@ namespace Zeitlind.App.Infrastructure;
 
 internal abstract record HookMessage;
 
-internal sealed record HookReadyMessage(
-    ulong ParserRva,
-    int ParserLocatorVersion,
-    ulong UidRootSlotRva,
-    int UidLocatorVersion,
-    int EquivalentUidPathCount
-) : HookMessage;
+internal sealed record HookReadyMessage(ulong ParserRva, int ParserLocatorVersion) : HookMessage;
 
-internal sealed record HookPacketMessage(CapturedPacket Packet, uint Uid) : HookMessage;
+internal sealed record HookPacketMessage(CapturedPacket Packet) : HookMessage;
 
 internal sealed record HookErrorMessage(string Error) : HookMessage;
-
-internal sealed record HookUidMessage(uint Uid) : HookMessage;
 
 internal sealed class HookPipeServer : IAsyncDisposable
 {
@@ -93,7 +85,6 @@ internal sealed class HookPipeServer : IAsyncDisposable
             HookProtocol.ReadyMessage => ParseReady(message),
             HookProtocol.PacketMessage => ParsePacket(message),
             HookProtocol.ErrorMessage => ParseError(message),
-            HookProtocol.UidMessage => ParseUid(message),
             _ => throw new InvalidDataException($"Hook 消息类型 {message[0]} 未知"),
         };
     }
@@ -126,7 +117,6 @@ internal sealed class HookPipeServer : IAsyncDisposable
             HookProtocol.ErrorMessage => messageLength
                 is >= HookProtocol.ErrorPrefixLength
                     and <= HookProtocol.MaximumErrorMessageLength,
-            HookProtocol.UidMessage => messageLength == HookProtocol.UidMessageLength,
             _ => throw new InvalidDataException($"Hook 消息类型 {messageType} 未知"),
         };
 
@@ -145,10 +135,7 @@ internal sealed class HookPipeServer : IAsyncDisposable
 
         return new HookReadyMessage(
             BinaryPrimitives.ReadUInt64LittleEndian(message[HookProtocol.ReadyParserRvaOffset..]),
-            BinaryPrimitives.ReadInt32LittleEndian(message[HookProtocol.ReadyParserLocatorVersionOffset..]),
-            BinaryPrimitives.ReadUInt64LittleEndian(message[HookProtocol.ReadyUidRootSlotRvaOffset..]),
-            BinaryPrimitives.ReadInt32LittleEndian(message[HookProtocol.ReadyUidLocatorVersionOffset..]),
-            BinaryPrimitives.ReadInt32LittleEndian(message[HookProtocol.ReadyEquivalentUidPathCountOffset..])
+            BinaryPrimitives.ReadInt32LittleEndian(message[HookProtocol.ReadyParserLocatorVersionOffset..])
         );
     }
 
@@ -159,7 +146,6 @@ internal sealed class HookPipeServer : IAsyncDisposable
             throw new InvalidDataException("Hook 数据包消息过短");
         }
 
-        var uid = BinaryPrimitives.ReadUInt32LittleEndian(message[HookProtocol.PacketUidOffset..]);
         var commandId = BinaryPrimitives.ReadUInt16LittleEndian(message[HookProtocol.PacketCommandIdOffset..]);
         var headerLength = BinaryPrimitives.ReadInt32LittleEndian(message[HookProtocol.PacketHeaderLengthOffset..]);
         var bodyLength = BinaryPrimitives.ReadInt32LittleEndian(message[HookProtocol.PacketBodyLengthOffset..]);
@@ -184,8 +170,7 @@ internal sealed class HookPipeServer : IAsyncDisposable
                 Header = header,
                 Body = body,
                 CapturedAt = DateTimeOffset.UtcNow,
-            },
-            uid
+            }
         );
     }
 
@@ -203,15 +188,5 @@ internal sealed class HookPipeServer : IAsyncDisposable
         }
 
         return new HookErrorMessage(Encoding.UTF8.GetString(message[HookProtocol.ErrorPrefixLength..]));
-    }
-
-    private static HookUidMessage ParseUid(ReadOnlySpan<byte> message)
-    {
-        if (message.Length != HookProtocol.UidMessageLength)
-        {
-            throw new InvalidDataException("Hook UID 消息长度无效");
-        }
-
-        return new HookUidMessage(BinaryPrimitives.ReadUInt32LittleEndian(message[HookProtocol.UidValueOffset..]));
     }
 }

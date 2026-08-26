@@ -111,25 +111,23 @@ internal sealed class ZzzCnGameModule : IGameModule
 
         private readonly ZzzAchievementSnapshotDecoder _decoder;
         private readonly PacketCaptureDiagnostics _diagnostics = new();
+        private readonly LocalPlayerLogUidSource _playerLogUidSource = new(
+            LocalLogUidFiles.Zzz,
+            10_000_000,
+            9_999_999_999
+        );
 
         public ZzzCaptureAdapter(AchievementCatalog catalog, string gameVersion)
         {
             _decoder = new ZzzAchievementSnapshotDecoder(catalog, gameVersion, Profile);
         }
 
-        public string StartInstruction => "请正常登录；Zeitlind 会等待绝区零完整成就快照和当前 UID";
+        public string StartInstruction => "请正常登录；Zeitlind 会等待绝区零完整成就快照和本地日志中的当前 UID";
 
         public void OnHookReady(HookReadyMessage message)
         {
-            if (message.UidRootSlotRva == 0 || message.UidLocatorVersion == 0)
-            {
-                throw new InvalidDataException("绝区零 Hook 未报告有效的 UID 定位信息");
-            }
-
             ApplicationLog.WriteDebug(
-                $"绝区零 Hook：解析器 RVA 0x{message.ParserRva:X}，定位版本 {message.ParserLocatorVersion}；"
-                    + $"UID RootSlot RVA 0x{message.UidRootSlotRva:X}，定位版本 {message.UidLocatorVersion}，"
-                    + $"{message.EquivalentUidPathCount} 条等价路径",
+                $"绝区零 Hook：解析器 RVA 0x{message.ParserRva:X}，定位版本 {message.ParserLocatorVersion}",
                 writeToConsole: true
             );
         }
@@ -137,6 +135,23 @@ internal sealed class ZzzCnGameModule : IGameModule
         public void ObservePacket(CapturedPacket packet)
         {
             _diagnostics.Observe(packet);
+        }
+
+        public bool TryReadIdentity(out PlayerIdentityEvidence evidence)
+        {
+            if (_playerLogUidSource.TryReadNewUid(out var playerLogUid, out var detail))
+            {
+                evidence = new PlayerIdentityEvidence(playerLogUid, detail);
+                return true;
+            }
+
+            evidence = default;
+            return false;
+        }
+
+        public string FormatIdentityDiagnostics()
+        {
+            return _playerLogUidSource.FormatDiagnostics();
         }
 
         public bool TryDecodeSnapshot(CapturedPacket packet, out AchievementSnapshot? snapshot)

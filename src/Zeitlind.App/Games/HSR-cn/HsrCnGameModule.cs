@@ -6,7 +6,6 @@ using Zeitlind.Formats.Backup;
 using Zeitlind.Formats.Hsr;
 using Zeitlind.Protocol.Achievements;
 using Zeitlind.Protocol.Capture;
-using Zeitlind.Protocol.Identity;
 using Zeitlind.Protocol.Metadata;
 
 namespace Zeitlind.App.Games;
@@ -167,24 +166,30 @@ internal sealed class HsrCnGameModule : IGameModule
     {
         private static readonly HsrAchievementProtocolProfile Profile = new()
         {
-            FullSnapshotCommandId = 978,
+            FullSnapshotCommandId = 913,
             RecordFieldPath = "$.13[]",
-            IdFieldNumber = 14,
-            StatusFieldNumber = 15,
-            FinishTimestampFieldNumber = 2,
-            ProgressFieldNumber = 1,
-            PackedVarintFieldNumbers = [3],
+            IdFieldNumber = 11,
+            StatusFieldNumber = 12,
+            FinishTimestampFieldNumber = 14,
+            ProgressFieldNumber = 8,
+            PackedVarintFieldNumbers = [],
         };
 
         private readonly HsrAchievementSnapshotDecoder _decoder;
         private readonly PacketCaptureDiagnostics _diagnostics = new();
+        private readonly LocalPlayerLogUidSource _playerLogUidSource = new(
+            LocalLogUidFiles.Hsr,
+            10_000_000,
+            9_999_999_999
+        );
 
         public HsrCaptureAdapter(AchievementCatalog catalog, string gameVersion)
         {
             _decoder = new HsrAchievementSnapshotDecoder(catalog, gameVersion, Profile);
         }
 
-        public string StartInstruction => "请正常登录并打开成就页面；Zeitlind 会等待星穹铁道完整成就快照和登录 UID";
+        public string StartInstruction =>
+            "请正常登录并打开成就页面；Zeitlind 会等待星穹铁道完整成就快照和本地日志中的当前 UID";
 
         public void OnHookReady(HookReadyMessage message)
         {
@@ -199,20 +204,21 @@ internal sealed class HsrCnGameModule : IGameModule
             _diagnostics.Observe(packet);
         }
 
-        public bool TryDecodeIdentity(CapturedPacket packet, out PlayerIdentityEvidence evidence)
+        public bool TryReadIdentity(out PlayerIdentityEvidence evidence)
         {
-            if (PlayerIdentityDecoder.TryDecode(packet, out var uid, out var fieldNumber))
+            if (_playerLogUidSource.TryReadNewUid(out var playerLogUid, out var detail))
             {
-                evidence = new PlayerIdentityEvidence(
-                    uid,
-                    PlayerIdentityConfidence.Confirmed,
-                    $"命令 {packet.CommandId}，字段 {fieldNumber}"
-                );
+                evidence = new PlayerIdentityEvidence(playerLogUid, detail);
                 return true;
             }
 
             evidence = default;
             return false;
+        }
+
+        public string FormatIdentityDiagnostics()
+        {
+            return _playerLogUidSource.FormatDiagnostics();
         }
 
         public bool TryDecodeSnapshot(CapturedPacket packet, out AchievementSnapshot? snapshot)

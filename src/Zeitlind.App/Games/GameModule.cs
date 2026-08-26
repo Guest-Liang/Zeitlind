@@ -2,7 +2,6 @@ using Zeitlind.App.Infrastructure;
 using Zeitlind.Core.Achievements;
 using Zeitlind.Core.Games;
 using Zeitlind.Protocol.Capture;
-using Zeitlind.Protocol.Identity;
 using Zeitlind.Protocol.Metadata;
 
 namespace Zeitlind.App.Games;
@@ -17,6 +16,8 @@ internal sealed record GameDescriptor(
     string HookResourceName,
     string HookEntryPoint
 );
+
+internal readonly record struct PlayerIdentityEvidence(ulong Uid, string Detail);
 
 internal interface IGameModule
 {
@@ -41,11 +42,13 @@ internal interface IGameCaptureAdapter
 
     void ObservePacket(CapturedPacket packet) { }
 
-    bool TryDecodeIdentity(CapturedPacket packet, out PlayerIdentityEvidence evidence)
+    bool TryReadIdentity(out PlayerIdentityEvidence evidence)
     {
         evidence = default;
         return false;
     }
+
+    string FormatIdentityDiagnostics() => "当前游戏未配置本地 UID 来源";
 
     bool TryDecodeSnapshot(CapturedPacket packet, out AchievementSnapshot? snapshot);
 

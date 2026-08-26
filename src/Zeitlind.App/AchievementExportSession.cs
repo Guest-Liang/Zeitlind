@@ -1,7 +1,6 @@
 using Zeitlind.App.Games;
 using Zeitlind.App.Infrastructure;
 using Zeitlind.Core.Achievements;
-using Zeitlind.Protocol.Identity;
 using Zeitlind.Protocol.Metadata;
 
 namespace Zeitlind.App;
@@ -9,6 +8,7 @@ namespace Zeitlind.App;
 internal static class AchievementExportSession
 {
     private static readonly TimeSpan UidWaitAfterSnapshot = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan LocalUidPollInterval = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan GracefulGameExitTimeout = TimeSpan.FromSeconds(10);
 
     public static async Task<int> RunAsync(
@@ -128,31 +128,44 @@ internal static class AchievementExportSession
         AchievementSnapshot? pendingSnapshot = null;
         DateTimeOffset? uidDeadline = null;
         ulong? currentUid = null;
-        HashSet<ulong> weakUidCandidates = [];
+        using var pipeReadCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Task<HookMessage>? pendingRead = null;
 
-        while (true)
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            CancellationTokenSource? uidWaitCancellation = null;
-            var readCancellationToken = cancellationToken;
-            if (pendingSnapshot is not null && currentUid is null)
+            while (true)
             {
-                var remaining = uidDeadline!.Value - DateTimeOffset.UtcNow;
-                if (remaining <= TimeSpan.Zero)
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (adapter.TryReadIdentity(out var identity) && identity.Uid != 0)
                 {
-                    return CompleteWithoutUidOrThrow(pendingSnapshot, adapter);
+                    UpdateUidFromLocalLog(ref currentUid, identity);
                 }
 
-                uidWaitCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                uidWaitCancellation.CancelAfter(remaining);
-                readCancellationToken = uidWaitCancellation.Token;
-            }
+                if (pendingSnapshot is not null && currentUid is not null)
+                {
+                    return new CapturedAchievementSnapshot(pendingSnapshot, currentUid.Value);
+                }
 
-            HookMessage message;
-            try
-            {
-                var read = pipe.ReadMessageAsync(readCancellationToken);
-                if (await Task.WhenAny(read, gameExit) == gameExit)
+                var pollDelay = LocalUidPollInterval;
+                if (pendingSnapshot is not null && currentUid is null)
+                {
+                    var remaining = uidDeadline!.Value - DateTimeOffset.UtcNow;
+                    if (remaining <= TimeSpan.Zero)
+                    {
+                        return CompleteWithoutUidOrThrow(pendingSnapshot, adapter);
+                    }
+
+                    if (remaining < pollDelay)
+                    {
+                        pollDelay = remaining;
+                    }
+                }
+
+                pendingRead ??= pipe.ReadMessageAsync(pipeReadCancellation.Token);
+                var poll = Task.Delay(pollDelay, cancellationToken);
+                var completed = await Task.WhenAny(pendingRead, gameExit, poll);
+                if (completed == gameExit)
                 {
                     if (pendingSnapshot is not null && adapter.CanExportWithoutConfirmedUid)
                     {
@@ -161,160 +174,140 @@ internal static class AchievementExportSession
 
                     var missing = pendingSnapshot is null ? "完整成就快照" : "当前游戏 UID";
                     throw new InvalidOperationException(
-                        $"游戏在取得{missing}前退出；已检查 {packetCount} 个明文包；{adapter.FormatDiagnostics()}"
+                        $"游戏在取得{missing}前退出；已检查 {packetCount} 个明文包；"
+                            + $"{adapter.FormatDiagnostics()}；{adapter.FormatIdentityDiagnostics()}"
                     );
                 }
 
-                message = await read;
-            }
-            catch (OperationCanceledException)
-                when (pendingSnapshot is not null && !cancellationToken.IsCancellationRequested)
-            {
-                return CompleteWithoutUidOrThrow(pendingSnapshot, adapter);
-            }
-            catch (EndOfStreamException exception)
-            {
-                if (pendingSnapshot is not null && adapter.CanExportWithoutConfirmedUid)
+                if (completed == poll)
                 {
-                    return CompleteWithoutUidOrThrow(pendingSnapshot, adapter);
+                    continue;
                 }
 
-                throw new InvalidOperationException(
-                    $"游戏内 Hook 提前关闭通信通道；已检查 {packetCount} 个明文包；{adapter.FormatDiagnostics()}",
-                    exception
-                );
-            }
-            finally
-            {
-                uidWaitCancellation?.Dispose();
-            }
-
-            switch (message)
-            {
-                case HookReadyMessage hookReady:
-                    if (ready)
+                HookMessage message;
+                try
+                {
+                    message = await pendingRead;
+                    pendingRead = null;
+                }
+                catch (EndOfStreamException exception)
+                {
+                    if (pendingSnapshot is not null && adapter.CanExportWithoutConfirmedUid)
                     {
-                        throw new InvalidDataException("Hook 重复发送了就绪确认");
+                        return CompleteWithoutUidOrThrow(pendingSnapshot, adapter);
                     }
 
-                    ready = true;
-                    ApplicationLog.WriteInfo("Hook 已就绪");
-                    adapter.OnHookReady(hookReady);
-                    break;
+                    throw new InvalidOperationException(
+                        $"游戏内 Hook 提前关闭通信通道；已检查 {packetCount} 个明文包；"
+                            + $"{adapter.FormatDiagnostics()}；{adapter.FormatIdentityDiagnostics()}",
+                        exception
+                    );
+                }
 
-                case HookUidMessage uid:
-                    if (!ready)
-                    {
-                        throw new InvalidDataException("Hook 在就绪确认前发送了 UID");
-                    }
-
-                    ConfirmUid(ref currentUid, uid.Uid, "Hook UID 消息");
-
-                    if (pendingSnapshot is not null && currentUid is not null)
-                    {
-                        return new CapturedAchievementSnapshot(pendingSnapshot, currentUid.Value);
-                    }
-
-                    break;
-
-                case HookPacketMessage packet:
-                    if (!ready)
-                    {
-                        throw new InvalidDataException("Hook 在就绪确认前发送了数据包");
-                    }
-
-                    packetCount++;
-                    adapter.ObservePacket(packet.Packet);
-                    if (packetCount == 1)
-                    {
-                        ApplicationLog.WriteInfo("已收到第一个包");
-                        ApplicationLog.WriteDebug(
-                            $"第一个包详情：命令 {packet.Packet.CommandId}，包体 {packet.Packet.Body.Length} bytes",
-                            writeToConsole: true
-                        );
-                    }
-
-                    ConfirmUid(ref currentUid, packet.Uid, "Hook 数据包 UID");
-
-                    if (adapter.TryDecodeIdentity(packet.Packet, out var identity) && identity.Uid != 0)
-                    {
-                        if (identity.Confidence == PlayerIdentityConfidence.Confirmed)
+                switch (message)
+                {
+                    case HookReadyMessage hookReady:
+                        if (ready)
                         {
-                            ConfirmUid(ref currentUid, identity.Uid, identity.Detail);
+                            throw new InvalidDataException("Hook 重复发送了就绪确认");
                         }
-                        else if (
-                            identity.Confidence == PlayerIdentityConfidence.Weak
-                            && currentUid is null
-                            && weakUidCandidates.Count < 16
-                            && weakUidCandidates.Add(identity.Uid)
-                        )
+
+                        ready = true;
+                        ApplicationLog.WriteInfo("Hook 已就绪");
+                        adapter.OnHookReady(hookReady);
+                        break;
+
+                    case HookPacketMessage packet:
+                        if (!ready)
                         {
+                            throw new InvalidDataException("Hook 在就绪确认前发送了数据包");
+                        }
+
+                        packetCount++;
+                        adapter.ObservePacket(packet.Packet);
+                        if (packetCount == 1)
+                        {
+                            ApplicationLog.WriteInfo("已收到第一个包");
                             ApplicationLog.WriteDebug(
-                                $"发现未确认的 UID 弱候选 {identity.Uid}：{identity.Detail}",
+                                $"第一个包详情：命令 {packet.Packet.CommandId}，包体 {packet.Packet.Body.Length} bytes",
                                 writeToConsole: true
                             );
                         }
-                    }
 
-                    if (
-                        pendingSnapshot is null
-                        && adapter.TryDecodeSnapshot(packet.Packet, out var snapshot)
-                        && snapshot is not null
-                    )
-                    {
-                        pendingSnapshot = snapshot;
-                        ApplicationLog.WriteInfo("已确认完整成就快照结构");
-                        ApplicationLog.WriteDebug(
-                            $"成就记录结构详情：{adapter.FormatSnapshotDetails(snapshot)}",
-                            writeToConsole: true
-                        );
-                        if (currentUid is not null)
+                        if (
+                            pendingSnapshot is null
+                            && adapter.TryDecodeSnapshot(packet.Packet, out var snapshot)
+                            && snapshot is not null
+                        )
                         {
-                            return new CapturedAchievementSnapshot(snapshot, currentUid.Value);
+                            pendingSnapshot = snapshot;
+                            ApplicationLog.WriteInfo("已确认完整成就快照结构");
+                            ApplicationLog.WriteDebug(
+                                $"成就记录结构详情：{adapter.FormatSnapshotDetails(snapshot)}",
+                                writeToConsole: true
+                            );
+                            if (currentUid is null)
+                            {
+                                uidDeadline = DateTimeOffset.UtcNow + UidWaitAfterSnapshot;
+                                ApplicationLog.WriteInfo("成就快照已取得；本地日志尚未写入 UID，继续等待最多 30 秒...");
+                            }
                         }
 
-                        uidDeadline = DateTimeOffset.UtcNow + UidWaitAfterSnapshot;
-                        ApplicationLog.WriteInfo("成就快照已取得；UID 尚未确认，继续等待最多 30 秒...");
-                    }
+                        if (pendingSnapshot is null && packetCount % 100 == 0)
+                        {
+                            ApplicationLog.WriteDebug(
+                                $"已检查 {packetCount} 个包，继续等待完整成就快照；{adapter.FormatDiagnostics()}",
+                                writeToConsole: true
+                            );
+                        }
 
-                    if (pendingSnapshot is null && packetCount % 100 == 0)
-                    {
-                        ApplicationLog.WriteDebug(
-                            $"已检查 {packetCount} 个包，继续等待完整成就快照；{adapter.FormatDiagnostics()}",
-                            writeToConsole: true
-                        );
-                    }
+                        break;
 
-                    break;
+                    case HookErrorMessage error:
+                        throw new InvalidOperationException($"游戏内 Hook 报错：{error.Error}");
 
-                case HookErrorMessage error:
-                    throw new InvalidOperationException($"游戏内 Hook 报错：{error.Error}");
-
-                default:
-                    throw new InvalidDataException("收到无法识别的 Hook 消息");
+                    default:
+                        throw new InvalidDataException("收到无法识别的 Hook 消息");
+                }
+            }
+        }
+        finally
+        {
+            pipeReadCancellation.Cancel();
+            if (pendingRead is not null)
+            {
+                try
+                {
+                    await pendingRead;
+                }
+                catch (Exception exception) when (exception is OperationCanceledException or EndOfStreamException)
+                {
+                    // The session is ending and owns this single outstanding pipe read.
+                }
             }
         }
     }
 
-    private static void ConfirmUid(ref ulong? currentUid, ulong candidate, string detail)
+    private static void UpdateUidFromLocalLog(ref ulong? currentUid, PlayerIdentityEvidence identity)
     {
-        if (candidate == 0)
+        if (identity.Uid == 0)
         {
             return;
         }
 
         if (currentUid is null)
         {
-            currentUid = candidate;
-            ApplicationLog.WriteInfo($"已确认当前游戏 UID：{candidate}");
-            ApplicationLog.WriteDebug($"UID 确认详情：{detail}", writeToConsole: true);
+            currentUid = identity.Uid;
+            ApplicationLog.WriteInfo($"已从本地日志确认当前游戏 UID：{identity.Uid}");
+            ApplicationLog.WriteDebug($"UID 确认详情：{identity.Detail}", writeToConsole: true);
             return;
         }
 
-        if (currentUid.Value != candidate)
+        if (currentUid.Value != identity.Uid)
         {
-            ApplicationLog.WriteWarning($"忽略与已确认 UID {currentUid.Value} 冲突的候选 {candidate}");
-            ApplicationLog.WriteDebug($"UID 冲突详情：{detail}", writeToConsole: true);
+            ApplicationLog.WriteWarning($"本地日志显示账号已从 UID {currentUid.Value} 切换为 {identity.Uid}");
+            ApplicationLog.WriteDebug($"UID 更新详情：{identity.Detail}", writeToConsole: true);
+            currentUid = identity.Uid;
         }
     }
 
@@ -329,14 +322,18 @@ internal static class AchievementExportSession
         }
 
         ApplicationLog.WriteWarning("当前游戏 UID 未能通过强证据确认；将保留成就快照，需要 UID 的字段会写为 null");
-        ApplicationLog.WriteDebug(adapter.FormatDiagnostics(), writeToConsole: true);
+        ApplicationLog.WriteDebug(
+            $"{adapter.FormatDiagnostics()}；{adapter.FormatIdentityDiagnostics()}",
+            writeToConsole: true
+        );
         return new CapturedAchievementSnapshot(snapshot, null);
     }
 
     private static InvalidOperationException MissingUid(IGameCaptureAdapter adapter)
     {
         return new InvalidOperationException(
-            $"已经取得完整成就快照，但当前游戏 UID 在 30 秒内仍未确认；{adapter.FormatDiagnostics()}"
+            $"已经取得完整成就快照，但本地日志在 30 秒内仍未写入可确认的当前 UID；"
+                + $"{adapter.FormatDiagnostics()}；{adapter.FormatIdentityDiagnostics()}"
         );
     }
 }

@@ -72,7 +72,6 @@ public sealed class HookFrameTransport
         var message = GC.AllocateUninitializedArray<byte>(messageLength);
         var span = message.AsSpan();
         span[0] = HookProtocol.PacketMessage;
-        BinaryPrimitives.WriteUInt32LittleEndian(span[HookProtocol.PacketUidOffset..], 0);
         BinaryPrimitives.WriteUInt16LittleEndian(span[HookProtocol.PacketCommandIdOffset..], commandId);
         BinaryPrimitives.WriteInt32LittleEndian(span[HookProtocol.PacketHeaderLengthOffset..], header.Length);
         BinaryPrimitives.WriteInt32LittleEndian(span[HookProtocol.PacketBodyLengthOffset..], body.Length);
@@ -95,13 +94,7 @@ public sealed class HookFrameTransport
         return true;
     }
 
-    public void SendReady(
-        uint parserRva,
-        int parserLocatorVersion,
-        ulong uidRootSlotRva = 0,
-        int uidLocatorVersion = 0,
-        int equivalentUidPathCount = 0
-    )
+    public void SendReady(uint parserRva, int parserLocatorVersion)
     {
         Span<byte> message = stackalloc byte[HookProtocol.ReadyMessageLength];
         message.Clear();
@@ -111,23 +104,6 @@ public sealed class HookFrameTransport
             message[HookProtocol.ReadyParserLocatorVersionOffset..],
             parserLocatorVersion
         );
-        BinaryPrimitives.WriteUInt64LittleEndian(message[HookProtocol.ReadyUidRootSlotRvaOffset..], uidRootSlotRva);
-        BinaryPrimitives.WriteInt32LittleEndian(
-            message[HookProtocol.ReadyUidLocatorVersionOffset..],
-            uidLocatorVersion
-        );
-        BinaryPrimitives.WriteInt32LittleEndian(
-            message[HookProtocol.ReadyEquivalentUidPathCountOffset..],
-            equivalentUidPathCount
-        );
-        Send(message);
-    }
-
-    public void SendUid(uint uid)
-    {
-        Span<byte> message = stackalloc byte[HookProtocol.UidMessageLength];
-        message[0] = HookProtocol.UidMessage;
-        BinaryPrimitives.WriteUInt32LittleEndian(message[HookProtocol.UidValueOffset..], uid);
         Send(message);
     }
 
@@ -180,17 +156,6 @@ public sealed class HookFrameTransport
     {
         Volatile.Write(ref _connected, 0);
         Interlocked.Exchange(ref _pipe, null)?.Dispose();
-    }
-
-    public static bool TrySetPacketUid(Span<byte> message, uint uid)
-    {
-        if (message.Length < HookProtocol.UidMessageLength || message[0] != HookProtocol.PacketMessage)
-        {
-            return false;
-        }
-
-        BinaryPrimitives.WriteUInt32LittleEndian(message[HookProtocol.PacketUidOffset..], uid);
-        return true;
     }
 }
 

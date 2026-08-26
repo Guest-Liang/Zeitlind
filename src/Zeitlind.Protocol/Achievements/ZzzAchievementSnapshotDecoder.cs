@@ -113,7 +113,7 @@ public sealed class ZzzAchievementSnapshotDecoder
         }
 
         var plausibleRows = rowsWithId
-            .Where(row => row[idFieldNumber] <= uint.MaxValue && LooksLikeAchievementId((uint)row[idFieldNumber]))
+            .Where(row => row[idFieldNumber] <= uint.MaxValue && IsPlausibleAchievementId((uint)row[idFieldNumber]))
             .ToArray();
         if (plausibleRows.Length < MinimumVerifiedRecordCount || plausibleRows.Length * 10 < rowsWithId.Length * 9)
         {
@@ -356,7 +356,7 @@ public sealed class ZzzAchievementSnapshotDecoder
         return bestField;
     }
 
-    private static IReadOnlyList<AchievementRecord>? BuildRecords(
+    private IReadOnlyList<AchievementRecord>? BuildRecords(
         IReadOnlyList<Dictionary<uint, ulong>> rows,
         uint idFieldNumber,
         uint? finishTimestampFieldNumber,
@@ -375,7 +375,7 @@ public sealed class ZzzAchievementSnapshotDecoder
             }
 
             var id = (uint)rawId;
-            if (!LooksLikeAchievementId(id))
+            if (!IsPlausibleAchievementId(id))
             {
                 continue;
             }
@@ -552,11 +552,6 @@ public sealed class ZzzAchievementSnapshotDecoder
             return candidate.IsAccepted;
         }
 
-        if (candidate.IsExactKnownProfile != previous.IsExactKnownProfile)
-        {
-            return candidate.IsExactKnownProfile;
-        }
-
         if (candidate.CatalogMatchCount != previous.CatalogMatchCount)
         {
             return candidate.CatalogMatchCount > previous.CatalogMatchCount;
@@ -567,7 +562,12 @@ public sealed class ZzzAchievementSnapshotDecoder
             return candidate.Records.Count > previous.Records.Count;
         }
 
-        return candidate.CompletionEvidenceCount > previous.CompletionEvidenceCount;
+        if (candidate.CompletionEvidenceCount != previous.CompletionEvidenceCount)
+        {
+            return candidate.CompletionEvidenceCount > previous.CompletionEvidenceCount;
+        }
+
+        return candidate.IsExactKnownProfile && !previous.IsExactKnownProfile;
     }
 
     private static bool Prefer(AchievementRecord candidate, AchievementRecord previous)
@@ -583,6 +583,11 @@ public sealed class ZzzAchievementSnapshotDecoder
     private static bool LooksLikeAchievementId(uint value)
     {
         return value is >= 1_000_000 and <= 9_999_999;
+    }
+
+    private bool IsPlausibleAchievementId(uint value)
+    {
+        return _catalog.Ids.Contains(value) || LooksLikeAchievementId(value);
     }
 
     private sealed record RecordCollection(IReadOnlyList<uint> Path, IReadOnlyList<Dictionary<uint, ulong>> Rows);

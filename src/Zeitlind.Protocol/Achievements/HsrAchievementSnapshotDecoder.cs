@@ -154,7 +154,7 @@ public sealed class HsrAchievementSnapshotDecoder
         }
 
         var plausibleRows = rowsWithId
-            .Where(row => row[idFieldNumber] <= uint.MaxValue && LooksLikeAchievementId((uint)row[idFieldNumber]))
+            .Where(row => row[idFieldNumber] <= uint.MaxValue && IsPlausibleAchievementId((uint)row[idFieldNumber]))
             .ToArray();
         if (plausibleRows.Length < MinimumVerifiedRecordCount)
         {
@@ -445,7 +445,7 @@ public sealed class HsrAchievementSnapshotDecoder
         return null;
     }
 
-    private static IReadOnlyList<AchievementRecord> BuildRecords(
+    private IReadOnlyList<AchievementRecord> BuildRecords(
         IReadOnlyList<RecordRow> rows,
         uint idFieldNumber,
         uint? statusFieldNumber,
@@ -461,7 +461,7 @@ public sealed class HsrAchievementSnapshotDecoder
             if (
                 !row.TryGetValue(idFieldNumber, out var rawId)
                 || rawId > uint.MaxValue
-                || !LooksLikeAchievementId((uint)rawId)
+                || !IsPlausibleAchievementId((uint)rawId)
             )
             {
                 continue;
@@ -691,6 +691,11 @@ public sealed class HsrAchievementSnapshotDecoder
     private static bool LooksLikeAchievementId(uint value)
     {
         return value is >= 4_000_000 and <= 4_999_999;
+    }
+
+    private bool IsPlausibleAchievementId(uint value)
+    {
+        return _catalog.Ids.Contains(value) || LooksLikeAchievementId(value);
     }
 
     private sealed class RecordRow : Dictionary<uint, ulong>

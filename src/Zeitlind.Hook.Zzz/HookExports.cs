@@ -20,9 +20,7 @@ public static class HookExports
 
     private static void Run(PacketHookInstallation installation)
     {
-        var uidLocation = CurrentUidLocator.Locate(installation.ModuleBase);
-        var uidReader = new CurrentUidReader(uidLocation);
-        FrameTransport.SendReady(installation.ParserRva, uidLocation);
-        FrameTransport.Pump(uidReader);
+        FrameTransport.SendReady(installation.ParserRva);
+        FrameTransport.Pump();
     }
 }

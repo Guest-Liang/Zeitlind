@@ -6,7 +6,6 @@ using Zeitlind.Formats.Backup;
 using Zeitlind.Formats.Genshin;
 using Zeitlind.Protocol.Achievements;
 using Zeitlind.Protocol.Capture;
-using Zeitlind.Protocol.Identity;
 using Zeitlind.Protocol.Metadata;
 
 namespace Zeitlind.App.Games;
@@ -182,13 +181,19 @@ internal sealed class GiCnGameModule : IGameModule
 
         private readonly GenshinAchievementSnapshotDecoder _decoder;
         private readonly PacketCaptureDiagnostics _diagnostics = new();
+        private readonly LocalPlayerLogUidSource _playerLogUidSource = new(
+            LocalLogUidFiles.Genshin,
+            10_000_000,
+            9_999_999_999
+        );
 
         public GiCaptureAdapter(AchievementCatalog catalog, string gameVersion)
         {
             _decoder = new GenshinAchievementSnapshotDecoder(catalog, gameVersion, Profile);
         }
 
-        public string StartInstruction => "请正常登录并打开成就页面；Zeitlind 会等待原神完整成就快照和当前 UID";
+        public string StartInstruction =>
+            "请正常登录并打开成就页面；Zeitlind 会等待原神完整成就快照和本地日志中的当前 UID";
 
         public bool CanExportWithoutConfirmedUid => true;
 
@@ -205,15 +210,21 @@ internal sealed class GiCnGameModule : IGameModule
             _diagnostics.Observe(packet);
         }
 
-        public bool TryDecodeIdentity(CapturedPacket packet, out PlayerIdentityEvidence evidence)
+        public bool TryReadIdentity(out PlayerIdentityEvidence evidence)
         {
-            if (GenshinPlayerIdentityDecoder.TryDecode(packet, out evidence))
+            if (_playerLogUidSource.TryReadNewUid(out var playerLogUid, out var detail))
             {
+                evidence = new PlayerIdentityEvidence(playerLogUid, detail);
                 return true;
             }
 
             evidence = default;
             return false;
+        }
+
+        public string FormatIdentityDiagnostics()
+        {
+            return _playerLogUidSource.FormatDiagnostics();
         }
 
         public bool TryDecodeSnapshot(CapturedPacket packet, out AchievementSnapshot? snapshot)
