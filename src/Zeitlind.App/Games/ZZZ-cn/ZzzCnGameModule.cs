@@ -13,7 +13,7 @@ namespace Zeitlind.App.Games;
 internal sealed class ZzzCnGameModule : IGameModule
 {
     private const string ProductionMarker = "CNPRODWin";
-    private const string SupportedVersionPrefix = "CNPRODWin3.1.";
+    private const string SupportedVersionPrefix = "CNPRODWin";
 
     public static ZzzCnGameModule Instance { get; } = new();
 
@@ -46,7 +46,7 @@ internal sealed class ZzzCnGameModule : IGameModule
 
         if (!marker.StartsWith(SupportedVersionPrefix, StringComparison.Ordinal))
         {
-            throw new InvalidDataException($"构建标记为 {marker}；当前 Zeitlind 仅支持绝区零国服 3.1");
+            throw new InvalidDataException($"构建标记为 {marker}；当前 Zeitlind 仅支持绝区零国服");
         }
 
         EnsureGameAssembly(directory);

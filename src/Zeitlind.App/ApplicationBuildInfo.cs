@@ -2,7 +2,7 @@ namespace Zeitlind.App;
 
 internal static class ApplicationBuildInfo
 {
-    public const string Version = "2.2.1";
+    public const string Version = "2.2.2";
 
 #if DEBUG
     public const string Configuration = "Debug";
