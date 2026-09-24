@@ -14,5 +14,7 @@ public sealed record GenshinAchievementProtocolProfile
 
     public required uint ProgressFieldNumber { get; init; }
 
+    public required uint TotalProgressFieldNumber { get; init; }
+
     public required IReadOnlyList<uint> PackedVarintFieldNumbers { get; init; }
 }

@@ -7,35 +7,6 @@ using Zeitlind.Protocol.Protobuf;
 
 namespace Zeitlind.Protocol.Achievements;
 
-public sealed record AchievementCandidateDiagnostic
-{
-    public required uint CommandId { get; init; }
-
-    public required string RecordFieldPath { get; init; }
-
-    public required uint IdFieldNumber { get; init; }
-
-    public required uint? StatusFieldNumber { get; init; }
-
-    public required uint? FinishTimestampFieldNumber { get; init; }
-
-    public required uint? ProgressFieldNumber { get; init; }
-
-    public uint? CompletedFlagFieldNumber { get; init; }
-
-    public required int RecordCount { get; init; }
-
-    public required int CatalogMatchCount { get; init; }
-
-    public required int UnknownIdCount { get; init; }
-
-    public required int CompletionEvidenceCount { get; init; }
-
-    public required bool IsAccepted { get; init; }
-
-    public required string Decision { get; init; }
-}
-
 public sealed class HsrAchievementSnapshotDecoder
 {
     private const int MinimumVerifiedRecordCount = 3;

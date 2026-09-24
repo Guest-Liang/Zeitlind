@@ -170,12 +170,13 @@ internal sealed class GiCnGameModule : IGameModule
     {
         private static readonly GenshinAchievementProtocolProfile Profile = new()
         {
-            FullSnapshotCommandId = 29910,
-            RecordFieldPath = "$.5[]",
-            IdFieldNumber = 5,
-            StatusFieldNumber = 8,
-            FinishTimestampFieldNumber = 2,
-            ProgressFieldNumber = 6,
+            FullSnapshotCommandId = 24317,
+            RecordFieldPath = "$.6[]",
+            IdFieldNumber = 11,
+            StatusFieldNumber = 3,
+            FinishTimestampFieldNumber = 14,
+            ProgressFieldNumber = 12,
+            TotalProgressFieldNumber = 10,
             PackedVarintFieldNumbers = [],
         };
 
@@ -244,8 +245,9 @@ internal sealed class GiCnGameModule : IGameModule
         public string FormatSnapshotDetails(AchievementSnapshot snapshot)
         {
             return $"命令 {snapshot.SourceCommandId}，路径 {snapshot.RecordFieldPath}，"
-                + $"ID/状态/完成时间/进度字段 {snapshot.IdFieldNumber}/{Display(snapshot.StatusFieldNumber)}/"
-                + $"{Display(snapshot.FinishTimestampFieldNumber)}/{Display(snapshot.ProgressFieldNumber)}";
+                + $"ID/状态/完成时间/进度/目标数量字段 {snapshot.IdFieldNumber}/{Display(snapshot.StatusFieldNumber)}/"
+                + $"{Display(snapshot.FinishTimestampFieldNumber)}/{Display(snapshot.ProgressFieldNumber)}/"
+                + $"{Display(snapshot.TotalProgressFieldNumber)}";
         }
 
         private static string Display(uint? value)
@@ -258,7 +260,8 @@ internal sealed class GiCnGameModule : IGameModule
             return $"命令 {diagnostic.CommandId}，路径 {diagnostic.RecordFieldPath}，"
                 + $"ID 字段 {diagnostic.IdFieldNumber}，状态字段 {Display(diagnostic.StatusFieldNumber)}，"
                 + $"完成时间字段 {Display(diagnostic.FinishTimestampFieldNumber)}，"
-                + $"进度字段 {Display(diagnostic.ProgressFieldNumber)}；记录 {diagnostic.RecordCount} 条，"
+                + $"进度字段 {Display(diagnostic.ProgressFieldNumber)}，"
+                + $"目标数量字段 {Display(diagnostic.TotalProgressFieldNumber)}；记录 {diagnostic.RecordCount} 条，"
                 + $"元数据命中 {diagnostic.CatalogMatchCount} 条，未知 ID {diagnostic.UnknownIdCount} 条，"
                 + $"完成时间证据 {diagnostic.CompletionEvidenceCount} 条；{diagnostic.Decision}";
         }

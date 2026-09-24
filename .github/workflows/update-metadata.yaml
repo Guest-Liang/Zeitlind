@@ -1,9 +1,9 @@
-name: Check ZZZ Liyin Achievement Metadata
-run-name: Check ZZZ Liyin achievement metadata
+name: 检查成就元数据更新
+run-name: Check achievement metadata for ZZZ, HSR, and Genshin
 
 on:
   schedule:
-    # 每天 UTC+8 10:17 检查。避开整点可减少 GitHub 定时任务拥堵。
+    # 每天 UTC+8 10:17 同时检查三款游戏
     - cron: "17 2 * * *"
   workflow_dispatch:
 
@@ -11,22 +11,59 @@ permissions:
   contents: write
   pull-requests: write
 
-concurrency:
-  group: update-zzz-liyin-achievement-metadata
-  cancel-in-progress: false
-
-env:
-  UPSTREAM_REPOSITORY: Ticca-Liyin/zzz.liyin.space
-  UPSTREAM_BRANCH: main
-  UPSTREAM_PATH: src/jsons/AchievementInfo.json
-  METADATA_PATH: src/Zeitlind.Protocol/Metadata/ZzzAchievementInfo.json
-  UPDATE_BRANCH: automation/update-zzz-liyin-achievement-metadata
-
 jobs:
   check:
-    name: Check and propose metadata update
+    name: Check ${{ matrix.label }} metadata
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - game: zzz
+            game_name: 绝区零
+            label: ZZZ Liyin
+            source: liyin
+            repository: Ticca-Liyin/zzz.liyin.space
+            branch: main
+            metadata_file: ZzzAchievementInfo.json
+            id_field: Id
+            minimum_count: 100
+            trim_version_whitespace: false
+            compare_mode: blob
+          - game: hsr
+            game_name: 崩坏：星穹铁道
+            label: HSR Liyin
+            source: liyin
+            repository: Ticca-Liyin/liyin.space
+            branch: master
+            metadata_file: HsrAchievementInfo.json
+            id_field: AchievementID
+            minimum_count: 1000
+            trim_version_whitespace: true
+            compare_mode: json
+          - game: genshin
+            game_name: 原神
+            label: Genshin Yae
+            source: yae
+            metadata_file: GenshinAchievementInfo.json
+    concurrency:
+      # 沿用原工作流的分组，同一游戏串行，不同游戏互不阻塞。
+      group: update-${{ matrix.game }}-${{ matrix.source }}-achievement-metadata
+      cancel-in-progress: false
+    env:
+      GAME_NAME: ${{ matrix.game_name }}
+      CATALOG_LABEL: ${{ matrix.label }}
+      SOURCE_KIND: ${{ matrix.source }}
+      UPSTREAM_REPOSITORY: ${{ matrix.repository }}
+      UPSTREAM_BRANCH: ${{ matrix.branch }}
+      UPSTREAM_PATH: src/jsons/AchievementInfo.json
+      METADATA_PATH: src/Zeitlind.Protocol/Metadata/${{ matrix.metadata_file }}
+      UPDATE_BRANCH: automation/update-${{ matrix.game }}-${{ matrix.source }}-achievement-metadata
+      ID_FIELD: ${{ matrix.id_field }}
+      MINIMUM_COUNT: ${{ matrix.minimum_count }}
+      TRIM_VERSION_WHITESPACE: ${{ matrix.trim_version_whitespace }}
+      COMPARE_MODE: ${{ matrix.compare_mode }}
 
     steps:
       - name: Checkout default branch
@@ -36,7 +73,6 @@ jobs:
           fetch-depth: 0
 
       - name: Continue an existing update pull request
-        id: existing
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -85,7 +121,6 @@ jobs:
               "refs/remotes/origin/$UPDATE_BRANCH"
           fi
 
-          echo "open_pr=$open_pr" >> "$GITHUB_OUTPUT"
 
       - name: Download, validate, and compare metadata
         id: metadata
@@ -94,6 +129,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+
+          if [[ "$SOURCE_KIND" == "yae" ]]; then
+            python3 tools/update-genshin-metadata.py \
+              --output "$METADATA_PATH" \
+              --github-output "$GITHUB_OUTPUT" \
+              --summary "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
           candidate="$RUNNER_TEMP/AchievementInfo.json"
           content_json="$(
@@ -153,19 +196,24 @@ jobs:
 
           validate_filter='
             type == "object" and
-            length >= 100 and
+            length >= $minimum_count and
             all(
               to_entries[];
               (.key | test("^[0-9]{7}$")) and
               (.value | type == "object") and
-              (.value.Id | type == "number") and
-              ((.value.Id | tostring) == .key) and
+              (.value[$id_field] | type == "number") and
+              ((.value[$id_field] | tostring) == .key) and
               (.value.Version | type == "string") and
-              (.value.Version | test("^[0-9]+(\\.[0-9]+){1,2}$"))
+              (.value.Version | if $trim_version then gsub("^\\s+|\\s+$"; "") else . end | test("^[0-9]+(\\.[0-9]+){1,2}$"))
             )
           '
-          jq --exit-status "$validate_filter" "$METADATA_PATH" > /dev/null
-          jq --exit-status "$validate_filter" "$candidate" > /dev/null
+          for metadata_file in "$METADATA_PATH" "$candidate"; do
+            jq --exit-status \
+              --arg id_field "$ID_FIELD" \
+              --argjson minimum_count "$MINIMUM_COUNT" \
+              --argjson trim_version "$TRIM_VERSION_WHITESPACE" \
+              "$validate_filter" "$metadata_file" > /dev/null
+          done
 
           old_count="$(jq 'length' "$METADATA_PATH")"
           new_count="$(jq 'length' "$candidate")"
@@ -175,7 +223,7 @@ jobs:
           fi
 
           version_filter='
-            [.[].Version]
+            [.[].Version | gsub("^\\s+|\\s+$"; "")]
             | unique
             | sort_by(split(".") | map(tonumber))
             | last
@@ -210,11 +258,24 @@ jobs:
               ] | length'
           )"
 
-          current_blob="$(git hash-object --no-filters "$METADATA_PATH")"
-          if [[ "$current_blob" == "$downloaded_blob" ]]; then
+          if [[ "$COMPARE_MODE" == "blob" ]]; then
+            current_blob="$(git hash-object --no-filters "$METADATA_PATH")"
+            if [[ "$current_blob" == "$downloaded_blob" ]]; then
+              changed=false
+            else
+              changed=true
+            fi
+          elif jq \
+            --exit-status \
+            --null-input \
+            --slurpfile current "$METADATA_PATH" \
+            --slurpfile candidate "$candidate" \
+            '$current[0] == $candidate[0]' > /dev/null; then
             changed=false
           else
             changed=true
+          fi
+          if [[ "$changed" == true ]]; then
             cp "$candidate" "$METADATA_PATH"
           fi
 
@@ -227,14 +288,15 @@ jobs:
             echo "added_count=$added_count"
             echo "removed_count=$removed_count"
             echo "modified_count=$modified_count"
+            echo "source_url=https://github.com/$UPSTREAM_REPOSITORY/blob/$source_commit/$UPSTREAM_PATH"
             echo "source_commit=$source_commit"
             echo "source_blob=$downloaded_blob"
           } >> "$GITHUB_OUTPUT"
 
           if [[ "$changed" == true ]]; then
-            heading="Liyin achievement metadata update found"
+            heading="$CATALOG_LABEL achievement metadata update found"
           else
-            heading="Liyin achievement metadata is current"
+            heading="$CATALOG_LABEL achievement metadata is current"
           fi
           {
             echo "## $heading"
@@ -265,7 +327,7 @@ jobs:
             user.email \
             "41898282+github-actions[bot]@users.noreply.github.com"
           git add -- "$METADATA_PATH"
-          git commit -m "chore: update ZZZ Liyin achievement metadata"
+          git commit -m "chore: update $CATALOG_LABEL achievement metadata"
 
           remote_line="$(
             git ls-remote \
@@ -296,16 +358,18 @@ jobs:
           ADDED_COUNT: ${{ steps.metadata.outputs.added_count }}
           REMOVED_COUNT: ${{ steps.metadata.outputs.removed_count }}
           MODIFIED_COUNT: ${{ steps.metadata.outputs.modified_count }}
+          SOURCE_URL: ${{ steps.metadata.outputs.source_url }}
+          SOURCE_SHA256: ${{ steps.metadata.outputs.source_sha256 }}
           SOURCE_COMMIT: ${{ steps.metadata.outputs.source_commit }}
           SOURCE_BLOB: ${{ steps.metadata.outputs.source_blob }}
         run: |
           set -euo pipefail
 
-          title="chore: update ZZZ Liyin achievement metadata to $NEW_VERSION"
-          body="$RUNNER_TEMP/liyin-metadata-pull-request.md"
-          source_url="https://github.com/$UPSTREAM_REPOSITORY/commit/$SOURCE_COMMIT"
-          cat > "$body" <<EOF
-          此 PR 由每日 Liyin 成就元数据检查自动生成。
+          title="chore: update $CATALOG_LABEL achievement metadata to $NEW_VERSION"
+          body="$RUNNER_TEMP/metadata-pull-request.md"
+          {
+            cat <<EOF
+          此 PR 由每日${GAME_NAME}成就元数据检查自动生成，数据来源为 $CATALOG_LABEL。
 
           | 项目 | 旧值 | 新值 |
           |---|---:|---:|
@@ -315,11 +379,22 @@ jobs:
           - 新增：$ADDED_COUNT
           - 删除：$REMOVED_COUNT
           - 修改：$MODIFIED_COUNT
-          - 上游提交：[$SOURCE_COMMIT]($source_url)
-          - 上游 Git blob：\`$SOURCE_BLOB\`
-
-          合并前必须确认新增版本已经进入绝区零国服正式客户端。本 workflow 不会自动合并 PR，也不会自动发布 Zeitlind。
+          - 上游数据：[$SOURCE_URL]($SOURCE_URL)
           EOF
+            if [[ -n "$SOURCE_COMMIT" ]]; then
+              echo "- 上游提交：[$SOURCE_COMMIT](https://github.com/$UPSTREAM_REPOSITORY/commit/$SOURCE_COMMIT)"
+              echo "- 上游 Git blob：\`$SOURCE_BLOB\`"
+            fi
+            if [[ -n "$SOURCE_SHA256" ]]; then
+              echo "- 上游数据 SHA-256：\`$SOURCE_SHA256\`"
+            fi
+            if [[ "$SOURCE_KIND" == "yae" ]]; then
+              echo
+              echo "Version 表示成就目录快照版本，不表示每项成就的首次上线版本。仅同步成就目录，不导入 Yae 的协议字段号或原生偏移。"
+            fi
+            echo
+            echo "合并前必须确认新增版本已经进入${GAME_NAME}国服正式客户端。本 workflow 不会自动合并 PR，也不会自动发布 Zeitlind。"
+          } > "$body"
 
           open_pr="$(
             gh pr list \

@@ -83,10 +83,26 @@ Zeitlind.exe --version
 
 运行时提取的 Hook DLL 位于本次运行专用的受保护临时目录；导出成功、取消或发生可处理异常后会自动删除。若进程被强制终止而来不及清理，遗留目录不会由后续管理员进程全局扫描，以避免清理不属于当前进程的路径。
 
+## 成就目录更新
+
+ZZZ、星铁和原神共用 GitHub Actions 工作流 `Check Achievement Metadata`（`.github/workflows/update-metadata.yaml`），每天北京时间 10:17 通过矩阵分别检查三款游戏，也可在 Actions 页面手动运行。有变化时为对应游戏创建或更新独立 PR，供人工核对后合并；不会自动合并或发布。每款游戏沿用原来的更新分支，一款游戏检查失败不会取消其他游戏的检查。
+
+原神数据来自 Yae 的 [`schicksal/metadata`](https://rin.holohat.work/schicksal/metadata) Protobuf 接口，按上游 [`AchievementInfo.proto`](https://github.com/HolographicHat/Yae/blob/master/YaeAchievement/res/proto/AchievementInfo.proto) 转换为 `GenshinAchievementInfo.json`，只同步成就目录。`Version` 表示目录快照版本，不是各项成就的首次上线版本。
+
+本地可用 Python 3 运行，无需额外依赖：
+
+```powershell
+# 只检查差异
+python tools/update-genshin-metadata.py --check
+
+# 获取、校验并更新本地目录
+python tools/update-genshin-metadata.py
+```
+
 ## 致谢与许可证
 
 项目设计参考了 [Yae](https://github.com/HolographicHat/Yae)。感谢 HolographicHat 与 Yae 项目贡献者提供的实现思路。
 
-绝区零元数据来自 [zzz.liyin.space](https://github.com/Ticca-Liyin/zzz.liyin.space)，星铁元数据来自 [liyin.space](https://github.com/Ticca-Liyin/liyin.space)，原神成就目录来自 Yae `schicksal/metadata`。实验性成就交换格式参考 [UIAF](https://uigf.org/zh/standards/uiaf.html) 及其多游戏分组思路，[提案链接](https://github.com/orgs/UIGF-org/discussions/18)。原神 `--format uiaf` 仍导出正式 UIAF v1.1；`--format uiaf12` 为带 UID 的实验性 v1.2。
+绝区零元数据来自 [zzz.liyin.space](https://github.com/Ticca-Liyin/zzz.liyin.space)，星铁元数据来自 [liyin.space](https://github.com/Ticca-Liyin/liyin.space)，原神成就目录来自 [Yae `schicksal/metadata`](https://github.com/HolographicHat/Yae/blob/master/YaeAchievement/src/GlobalVars.cs)。实验性成就交换格式参考 [UIAF](https://uigf.org/zh/standards/uiaf.html) 及其多游戏分组思路，[提案链接](https://github.com/orgs/UIGF-org/discussions/18)。原神 `--format uiaf` 仍导出正式 UIAF v1.1；`--format uiaf12` 为带 UID 的实验性 v1.2。
 
 本仓库采用 GNU GPL v3，详见 [`LICENSE`](LICENSE)。

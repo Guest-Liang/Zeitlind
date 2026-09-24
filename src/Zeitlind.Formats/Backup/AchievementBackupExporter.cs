@@ -31,6 +31,7 @@ public static class AchievementBackupExporter
                 FinishTimestampFieldNumber = snapshot.FinishTimestampFieldNumber,
                 CompletedFlagFieldNumber = snapshot.CompletedFlagFieldNumber,
                 ProgressFieldNumber = snapshot.ProgressFieldNumber,
+                TotalProgressFieldNumber = snapshot.TotalProgressFieldNumber,
                 PackedVarintFieldNumbers = snapshot.PackedVarintFieldNumbers.ToArray(),
                 CatalogMatchCount = snapshot.CatalogMatchCount,
                 UnknownIdCount = snapshot.UnknownIdCount,
@@ -49,6 +50,7 @@ public static class AchievementBackupExporter
             IsCompleted = record.IsCompleted,
             Status = record.Status,
             Progress = record.Progress,
+            TotalProgress = record.TotalProgress,
             FinishTimestamp = record.FinishTimestamp,
             FinishTimeUtc8 = AchievementTimestamp
                 .Normalize(record.FinishTimestamp)
@@ -132,6 +134,10 @@ internal sealed class DetectionInfo
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public uint? ProgressFieldNumber { get; init; }
 
+    [JsonPropertyName("total_progress_field_number")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public uint? TotalProgressFieldNumber { get; init; }
+
     [JsonPropertyName("packed_varint_field_numbers")]
     public required uint[] PackedVarintFieldNumbers { get; init; }
 
@@ -157,6 +163,10 @@ internal sealed class AchievementBackupRecord
     [JsonPropertyName("progress")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ulong? Progress { get; init; }
+
+    [JsonPropertyName("total_progress")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ulong? TotalProgress { get; init; }
 
     [JsonPropertyName("finish_timestamp")]
     public long? FinishTimestamp { get; init; }

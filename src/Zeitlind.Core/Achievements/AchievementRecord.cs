@@ -10,6 +10,9 @@ public sealed record AchievementRecord
 
     public ulong? Progress { get; init; }
 
+    /// <summary>服务端返回的目标进度（完成所需数量）。</summary>
+    public ulong? TotalProgress { get; init; }
+
     public long? FinishTimestamp { get; init; }
 
     public bool? CompletedFlag { get; init; }

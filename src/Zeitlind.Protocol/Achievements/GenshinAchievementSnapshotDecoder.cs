@@ -87,6 +87,7 @@ public sealed class GenshinAchievementSnapshotDecoder
             StatusFieldNumber = best.StatusFieldNumber,
             FinishTimestampFieldNumber = best.FinishTimestampFieldNumber,
             ProgressFieldNumber = best.ProgressFieldNumber,
+            TotalProgressFieldNumber = best.TotalProgressFieldNumber,
             PackedVarintFieldNumbers = best
                 .Records.SelectMany(static record => record.RawPackedVarints.Keys)
                 .Distinct()
@@ -165,12 +166,21 @@ public sealed class GenshinAchievementSnapshotDecoder
             statusFieldNumber,
             usesKnownRecordShape
         );
+        var totalProgressFieldNumber = GetTotalProgressField(
+            plausibleRows,
+            idFieldNumber,
+            finishTimestampFieldNumber,
+            statusFieldNumber,
+            progressFieldNumber,
+            isExactKnownProfile
+        );
         var records = BuildRecords(
             plausibleRows,
             idFieldNumber,
             statusFieldNumber,
             finishTimestampFieldNumber,
             progressFieldNumber,
+            totalProgressFieldNumber,
             preserveProfilePackedVarints: isExactKnownProfile
         );
         if (records.Count < MinimumVerifiedRecordCount)
@@ -212,6 +222,7 @@ public sealed class GenshinAchievementSnapshotDecoder
             statusFieldNumber,
             finishTimestampFieldNumber,
             progressFieldNumber,
+            totalProgressFieldNumber,
             records,
             catalogMatches,
             unknownIds,
@@ -414,12 +425,35 @@ public sealed class GenshinAchievementSnapshotDecoder
         return null;
     }
 
+    private uint? GetTotalProgressField(
+        IReadOnlyList<RecordRow> rows,
+        uint idFieldNumber,
+        uint? finishTimestampFieldNumber,
+        uint? statusFieldNumber,
+        uint? progressFieldNumber,
+        bool isExactKnownProfile
+    )
+    {
+        // 目标数量只按已确认的完整快照配置读取；自发现结构继续保留原始字段。
+        var fieldNumber = _profile.TotalProgressFieldNumber;
+        return isExactKnownProfile
+            && fieldNumber != 0
+            && fieldNumber != idFieldNumber
+            && fieldNumber != finishTimestampFieldNumber
+            && fieldNumber != statusFieldNumber
+            && fieldNumber != progressFieldNumber
+            && rows.Any(row => row.ContainsKey(fieldNumber))
+            ? fieldNumber
+            : null;
+    }
+
     private IReadOnlyList<AchievementRecord> BuildRecords(
         IReadOnlyList<RecordRow> rows,
         uint idFieldNumber,
         uint? statusFieldNumber,
         uint? finishTimestampFieldNumber,
         uint? progressFieldNumber,
+        uint? totalProgressFieldNumber,
         bool preserveProfilePackedVarints
     )
     {
@@ -443,6 +477,7 @@ public sealed class GenshinAchievementSnapshotDecoder
                 IsCompleted = finishTimestamp is > 0,
                 Status = VarintFieldReader.ReadUInt32(row, statusFieldNumber, defaultWhenMissing: true),
                 Progress = VarintFieldReader.ReadUInt64(row, progressFieldNumber, defaultWhenMissing: true),
+                TotalProgress = VarintFieldReader.ReadUInt64(row, totalProgressFieldNumber, defaultWhenMissing: false),
                 FinishTimestamp = finishTimestamp,
                 RawVarints = new Dictionary<uint, ulong>(row),
                 RawPackedVarints = preserveProfilePackedVarints
@@ -597,6 +632,7 @@ public sealed class GenshinAchievementSnapshotDecoder
             StatusFieldNumber = candidate.StatusFieldNumber,
             FinishTimestampFieldNumber = candidate.FinishTimestampFieldNumber,
             ProgressFieldNumber = candidate.ProgressFieldNumber,
+            TotalProgressFieldNumber = candidate.TotalProgressFieldNumber,
             RecordCount = candidate.Records.Count,
             CatalogMatchCount = candidate.CatalogMatchCount,
             UnknownIdCount = candidate.UnknownIdCount,
@@ -681,6 +717,7 @@ public sealed class GenshinAchievementSnapshotDecoder
         uint? StatusFieldNumber,
         uint? FinishTimestampFieldNumber,
         uint? ProgressFieldNumber,
+        uint? TotalProgressFieldNumber,
         IReadOnlyList<AchievementRecord> Records,
         int CatalogMatchCount,
         int UnknownIdCount,

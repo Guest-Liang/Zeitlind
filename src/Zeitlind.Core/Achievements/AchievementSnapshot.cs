@@ -24,6 +24,8 @@ public sealed record AchievementSnapshot
 
     public uint? ProgressFieldNumber { get; init; }
 
+    public uint? TotalProgressFieldNumber { get; init; }
+
     public required IReadOnlyList<uint> PackedVarintFieldNumbers { get; init; }
 
     public required int CatalogMatchCount { get; init; }
