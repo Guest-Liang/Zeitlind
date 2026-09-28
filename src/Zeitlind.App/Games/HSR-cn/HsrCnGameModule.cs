@@ -166,12 +166,12 @@ internal sealed class HsrCnGameModule : IGameModule
     {
         private static readonly HsrAchievementProtocolProfile Profile = new()
         {
-            FullSnapshotCommandId = 913,
-            RecordFieldPath = "$.13[]",
-            IdFieldNumber = 11,
-            StatusFieldNumber = 12,
-            FinishTimestampFieldNumber = 14,
-            ProgressFieldNumber = 8,
+            FullSnapshotCommandId = 925,
+            RecordFieldPath = "$.10[]",
+            IdFieldNumber = 12,
+            StatusFieldNumber = 1,
+            FinishTimestampFieldNumber = 3,
+            ProgressFieldNumber = 14,
             PackedVarintFieldNumbers = [],
         };
 
