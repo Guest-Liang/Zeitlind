@@ -1,7 +1,5 @@
 namespace Zeitlind.Hook.Common;
 
-public readonly record struct PacketHookInstallation(nint ModuleBase, uint ParserRva);
-
 public sealed class PacketHookState
 {
     private InlineHook? _inlineHook;
@@ -68,21 +66,5 @@ public sealed class PacketHookState
         Volatile.Read(ref _inlineHook)?.Restore();
         Interlocked.Exchange(ref _inlineHook, null);
         Interlocked.Exchange(ref _installed, 0);
-    }
-}
-
-public static class PacketHookLocator
-{
-    public static (nint ModuleBase, ParserLocation Parser) WaitForParser(
-        TimeSpan timeout,
-        uint headMagic,
-        uint tailMagic,
-        string moduleName = "GameAssembly.dll"
-    )
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);
-        var moduleBase = LoadedModule.WaitFor(moduleName, timeout);
-        var parser = ParserLocator.Locate(moduleBase, moduleName, headMagic, tailMagic);
-        return (moduleBase, parser);
     }
 }

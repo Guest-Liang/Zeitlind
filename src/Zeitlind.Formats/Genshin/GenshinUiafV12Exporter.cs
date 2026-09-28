@@ -18,13 +18,13 @@ public static class GenshinUiafV12Exporter
             {
                 Uid = uid,
                 List = snapshot
-                    .Records.Where(GenshinUiafExporter.ShouldExport)
+                    .Records.Where(GenshinUiafProjection.ShouldExport)
                     .OrderBy(static record => record.Id)
-                    .Select(static record => new Zeitlind.Formats.Uiaf.UiafAchievement
+                    .Select(static record => new UiafAchievement
                     {
                         Id = record.Id,
                         Current = record.Progress ?? 0,
-                        Status = GenshinUiafExporter.MapStatus(record),
+                        Status = GenshinUiafProjection.MapStatus(record),
                         Timestamp = UiafExportContract.NormalizeTimestamp(record.FinishTimestamp),
                     })
                     .ToArray(),
@@ -38,7 +38,7 @@ public static class GenshinUiafV12Exporter
 internal sealed class UiafV12Document
 {
     [JsonPropertyName("info")]
-    public required Zeitlind.Formats.Uiaf.UiafInfo Info { get; init; }
+    public required UiafInfo Info { get; init; }
 
     [JsonPropertyName("hk4e")]
     public required UiafGameData Hk4e { get; init; }

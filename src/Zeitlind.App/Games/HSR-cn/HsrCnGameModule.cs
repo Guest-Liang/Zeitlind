@@ -59,7 +59,7 @@ internal sealed class HsrCnGameModule : IGameModule
                 catalog.Count
             ),
             ExportTarget.Liyin => HsrLiyinExporter.Serialize(snapshot, confirmedUid, catalog.Ids),
-            ExportTarget.UiafExperimental => HsrUiafExporter.Serialize(snapshot, confirmedUid, catalog.Ids),
+            ExportTarget.Uiaf => HsrUiafExporter.Serialize(snapshot, confirmedUid, catalog.Ids),
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };
     }
@@ -74,7 +74,7 @@ internal sealed class HsrCnGameModule : IGameModule
             ExportTarget.AchievementBackup =>
                 $"导出完成：保留服务端返回的 {snapshot.Records.Count} 条星穹铁道成就记录，其中 {completed} 条已完成",
             ExportTarget.Liyin => $"导出完成：写入元数据内 {knownCompleted} 条已完成的星穹铁道成就 ID",
-            ExportTarget.UiafExperimental => $"导出完成：写入元数据内且状态为 1/2/3 的 {uiaf} 条星穹铁道成就记录",
+            ExportTarget.Uiaf => $"导出完成：写入元数据内且状态为 1/2/3 的 {uiaf} 条星穹铁道成就记录",
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };
     }

@@ -436,7 +436,8 @@ public sealed class GenshinAchievementSnapshotDecoder
     {
         // 目标数量只按已确认的完整快照配置读取；自发现结构继续保留原始字段。
         var fieldNumber = _profile.TotalProgressFieldNumber;
-        return isExactKnownProfile
+        return
+            isExactKnownProfile
             && fieldNumber != 0
             && fieldNumber != idFieldNumber
             && fieldNumber != finishTimestampFieldNumber

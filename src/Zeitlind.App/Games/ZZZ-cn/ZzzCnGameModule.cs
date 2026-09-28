@@ -70,7 +70,7 @@ internal sealed class ZzzCnGameModule : IGameModule
                 catalog.Count
             ),
             ExportTarget.Liyin => ZzzLiyinExporter.Serialize(snapshot, confirmedUid),
-            ExportTarget.UiafExperimental => ZzzUiafExporter.Serialize(snapshot, confirmedUid),
+            ExportTarget.Uiaf => ZzzUiafExporter.Serialize(snapshot, confirmedUid),
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };
     }
@@ -83,8 +83,7 @@ internal sealed class ZzzCnGameModule : IGameModule
             ExportTarget.AchievementBackup =>
                 $"导出完成：保留服务端返回的 {snapshot.Records.Count} 条绝区零成就记录，其中 {completed} 条已完成",
             ExportTarget.Liyin => $"导出完成：写入 {completed} 条具有完成证据的绝区零成就 ID",
-            ExportTarget.UiafExperimental =>
-                $"导出完成：写入服务端实际返回的 {snapshot.Records.Count} 条绝区零成就记录",
+            ExportTarget.Uiaf => $"导出完成：写入服务端实际返回的 {snapshot.Records.Count} 条绝区零成就记录",
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };
     }

@@ -57,7 +57,7 @@ internal sealed class GiCnGameModule : IGameModule
                 catalog.LatestVersion,
                 catalog.Count
             ),
-            ExportTarget.UiafExperimental => GenshinUiafExporter.Serialize(snapshot, ApplicationBuildInfo.Version),
+            ExportTarget.Uiaf => GenshinUiafExporter.Serialize(snapshot, ApplicationBuildInfo.Version),
             ExportTarget.UiafV12 => GenshinUiafV12Exporter.Serialize(snapshot, uid),
             ExportTarget.Liyin => throw new InvalidDataException(
                 "原神国服不支持 Liyin 导出，请使用 backup、uiaf 或 uiaf12"
@@ -76,7 +76,7 @@ internal sealed class GiCnGameModule : IGameModule
         {
             ExportTarget.AchievementBackup =>
                 $"导出完成：保留服务端返回的 {snapshot.Records.Count} 条原神成就记录，其中 {completed} 条已完成",
-            ExportTarget.UiafExperimental => $"导出完成：写入 UIAF v1.1 的 {uiaf} 条原神成就记录",
+            ExportTarget.Uiaf => $"导出完成：写入 UIAF v1.1 的 {uiaf} 条原神成就记录",
             ExportTarget.UiafV12 => $"导出完成：写入实验性 UIAF v1.2 的 {uiaf} 条原神成就记录",
             ExportTarget.Liyin => throw new InvalidDataException("原神国服不支持 Liyin 导出"),
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),

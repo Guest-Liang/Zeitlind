@@ -245,7 +245,7 @@ internal static class ExporterApplication
         {
             "backup" => ExportTarget.AchievementBackup,
             "liyin" => ExportTarget.Liyin,
-            "uiaf" => ExportTarget.UiafExperimental,
+            "uiaf" => ExportTarget.Uiaf,
             "uiaf12" => ExportTarget.UiafV12,
             _ => (ExportTarget)(-1),
         };

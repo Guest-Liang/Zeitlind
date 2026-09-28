@@ -10,7 +10,7 @@ internal static class ExportSelectionFlow
     [
         new(ExportTarget.AchievementBackup, "Zeitlind 成就数据备份（保留全部原始字段）"),
         new(ExportTarget.Liyin, "Zeitlind Liyin JSON（仅包含已完成的成就）"),
-        new(ExportTarget.UiafExperimental, "Zeitlind 实验性 UIAF v1.2"),
+        new(ExportTarget.Uiaf, "Zeitlind 实验性 UIAF v1.2"),
     ];
 
     public static ExportTarget Select(
@@ -56,7 +56,7 @@ internal static class ExportSelectionFlow
         {
             ExportTarget.AchievementBackup => "backup",
             ExportTarget.Liyin => "liyin",
-            ExportTarget.UiafExperimental => "uiaf",
+            ExportTarget.Uiaf => "uiaf",
             ExportTarget.UiafV12 => "uiaf12",
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };
@@ -68,7 +68,7 @@ internal static class ExportSelectionFlow
             ?
             [
                 new(ExportTarget.AchievementBackup, "Zeitlind 成就数据备份（保留全部原始字段）"),
-                new(ExportTarget.UiafExperimental, "UIAF v1.1"),
+                new(ExportTarget.Uiaf, "UIAF v1.1"),
                 new(ExportTarget.UiafV12, "Zeitlind 实验性 UIAF v1.2"),
             ]
             : Options;
@@ -91,10 +91,7 @@ internal static class ExportSelectionFlow
 
     private static void WarnIfExperimental(IGameModule module, ExportTarget target)
     {
-        if (
-            target == ExportTarget.UiafV12
-            || (target == ExportTarget.UiafExperimental && module.Descriptor.Kind != GameKind.GI)
-        )
+        if (target == ExportTarget.UiafV12 || (target == ExportTarget.Uiaf && module.Descriptor.Kind != GameKind.GI))
         {
             ApplicationLog.WriteWarning("提示：现行正式 UIAF 尚未定义 v1.2；Zeitlind 目前导出为实验性支持");
             ApplicationLog.WriteWarning("可查看 https://github.com/orgs/UIGF-org/discussions/18 以获取更多信息");
@@ -102,12 +99,4 @@ internal static class ExportSelectionFlow
     }
 
     private readonly record struct ExportOption(ExportTarget Target, string Label);
-}
-
-internal enum ExportTarget
-{
-    AchievementBackup,
-    Liyin,
-    UiafExperimental,
-    UiafV12,
 }
