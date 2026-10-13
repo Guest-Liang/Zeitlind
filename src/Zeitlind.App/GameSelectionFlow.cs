@@ -1,6 +1,8 @@
 using System.Security;
-using Zeitlind.App.Games;
 using Zeitlind.App.Infrastructure;
+using Zeitlind.Runtime;
+using Zeitlind.Runtime.Games;
+using Zeitlind.Runtime.Infrastructure;
 
 namespace Zeitlind.App;
 
@@ -149,5 +151,3 @@ internal static class GameSelectionFlow
         Console.WriteLine();
     }
 }
-
-internal sealed record GameSelection(IGameModule Module, string ExecutablePath, string Version);

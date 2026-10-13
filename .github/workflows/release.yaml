@@ -58,7 +58,7 @@ jobs:
 
           $versionSourcePath = Join-Path `
             $env:GITHUB_WORKSPACE `
-            'src\Zeitlind.App\ApplicationBuildInfo.cs'
+            'src\Zeitlind.Runtime\ApplicationBuildInfo.cs'
           $versionSource = Get-Content -LiteralPath $versionSourcePath -Raw
           $versionMatches = [regex]::Matches(
             $versionSource,
@@ -82,7 +82,7 @@ jobs:
           "version=$version" >> $env:GITHUB_OUTPUT
           "application_version=$applicationVersion" >> $env:GITHUB_OUTPUT
 
-      - name: Build Release and Debug NativeAOT executables
+      - name: Build CLI Release/Debug and Desktop Release executables
         id: assets
         shell: pwsh
         env:
@@ -90,32 +90,40 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
 
-          & .\build.ps1
+          & .\build-desktop.ps1 -Configuration Release -IncludeCliDebug
           if ($LASTEXITCODE -ne 0) {
-            throw "NativeAOT build failed with exit code $LASTEXITCODE."
+            throw "Building CLI and Desktop executables failed with exit code $LASTEXITCODE."
           }
 
           $buildDirectory = Join-Path $env:GITHUB_WORKSPACE 'artifacts\build'
-          $releaseExe = Join-Path $buildDirectory "Zeitlind_$($env:RELEASE_VERSION)_Release.exe"
-          $debugExe = Join-Path $buildDirectory "Zeitlind_$($env:RELEASE_VERSION)_Debug.exe"
-          $builtFiles = @(Get-ChildItem -LiteralPath $buildDirectory -File)
+          $desktopDirectory = Join-Path $env:GITHUB_WORKSPACE 'artifacts\desktop'
+          $cliReleaseExe = Join-Path $buildDirectory "Zeitlind_$($env:RELEASE_VERSION)_Release_cli.exe"
+          $cliDebugExe = Join-Path $buildDirectory "Zeitlind_$($env:RELEASE_VERSION)_Debug_cli.exe"
+          $desktopReleaseExe = Join-Path $desktopDirectory "Zeitlind_$($env:RELEASE_VERSION)_Release_desktop.exe"
+          $expectedPaths = @($cliReleaseExe, $cliDebugExe, $desktopReleaseExe)
+          $builtFiles = @(
+            Get-ChildItem -LiteralPath $buildDirectory -File
+            Get-ChildItem -LiteralPath $desktopDirectory -File
+          )
           $unexpectedFiles = @(
             $builtFiles | Where-Object {
-              $_.FullName -notin @($releaseExe, $debugExe)
+              $_.FullName -notin $expectedPaths
             }
           )
           if (
-            $builtFiles.Count -ne 2 -or
+            $builtFiles.Count -ne 3 -or
             $unexpectedFiles.Count -ne 0 -or
-            -not (Test-Path -LiteralPath $releaseExe -PathType Leaf) -or
-            -not (Test-Path -LiteralPath $debugExe -PathType Leaf)
+            -not (Test-Path -LiteralPath $cliReleaseExe -PathType Leaf) -or
+            -not (Test-Path -LiteralPath $cliDebugExe -PathType Leaf) -or
+            -not (Test-Path -LiteralPath $desktopReleaseExe -PathType Leaf)
           ) {
             $names = $builtFiles.Name -join ', '
-            throw "Expected exactly the Release and Debug executables, found: $names"
+            throw "Expected exactly CLI Release/Debug and Desktop Release executables, found: $names"
           }
 
-          "release_exe_path=$releaseExe" >> $env:GITHUB_OUTPUT
-          "debug_exe_path=$debugExe" >> $env:GITHUB_OUTPUT
+          "cli_release_exe_path=$cliReleaseExe" >> $env:GITHUB_OUTPUT
+          "cli_debug_exe_path=$cliDebugExe" >> $env:GITHUB_OUTPUT
+          "desktop_release_exe_path=$desktopReleaseExe" >> $env:GITHUB_OUTPUT
           "artifact_name=Zeitlind-$($env:RELEASE_VERSION)-win-x64" >> $env:GITHUB_OUTPUT
 
       - name: Upload workflow artifact
@@ -123,8 +131,9 @@ jobs:
         with:
           name: ${{ steps.assets.outputs.artifact_name }}
           path: |
-            ${{ steps.assets.outputs.release_exe_path }}
-            ${{ steps.assets.outputs.debug_exe_path }}
+            ${{ steps.assets.outputs.cli_release_exe_path }}
+            ${{ steps.assets.outputs.cli_debug_exe_path }}
+            ${{ steps.assets.outputs.desktop_release_exe_path }}
           if-no-files-found: error
 
       - name: Publish GitHub Release
@@ -132,8 +141,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
-          RELEASE_EXE_PATH: ${{ steps.assets.outputs.release_exe_path }}
-          DEBUG_EXE_PATH: ${{ steps.assets.outputs.debug_exe_path }}
+          CLI_RELEASE_EXE_PATH: ${{ steps.assets.outputs.cli_release_exe_path }}
+          CLI_DEBUG_EXE_PATH: ${{ steps.assets.outputs.cli_debug_exe_path }}
+          DESKTOP_RELEASE_EXE_PATH: ${{ steps.assets.outputs.desktop_release_exe_path }}
         run: |
           $ErrorActionPreference = 'Stop'
 
@@ -161,8 +171,9 @@ jobs:
 
             gh release upload `
               $version `
-              $env:RELEASE_EXE_PATH `
-              $env:DEBUG_EXE_PATH `
+              $env:CLI_RELEASE_EXE_PATH `
+              $env:CLI_DEBUG_EXE_PATH `
+              $env:DESKTOP_RELEASE_EXE_PATH `
               --repo $env:GITHUB_REPOSITORY `
               --clobber
             if ($LASTEXITCODE -ne 0) {
@@ -174,8 +185,9 @@ jobs:
           $arguments = @(
             'release', 'create',
             $version,
-            $env:RELEASE_EXE_PATH,
-            $env:DEBUG_EXE_PATH,
+            $env:CLI_RELEASE_EXE_PATH,
+            $env:CLI_DEBUG_EXE_PATH,
+            $env:DESKTOP_RELEASE_EXE_PATH,
             '--repo', $env:GITHUB_REPOSITORY,
             '--title', $version,
             '--generate-notes'

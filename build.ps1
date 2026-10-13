@@ -12,7 +12,7 @@ $zzzHookProject = Join-Path $projectRoot "src\Zeitlind.Hook.Zzz\Zeitlind.Hook.Zz
 $hsrHookProject = Join-Path $projectRoot "src\Zeitlind.Hook.Hsr\Zeitlind.Hook.Hsr.csproj"
 $genshinHookProject = Join-Path $projectRoot "src\Zeitlind.Hook.Genshin\Zeitlind.Hook.Genshin.csproj"
 $appProject = Join-Path $projectRoot "src\Zeitlind.App\Zeitlind.App.csproj"
-$versionSourcePath = Join-Path $projectRoot "src\Zeitlind.App\ApplicationBuildInfo.cs"
+$versionSourcePath = Join-Path $projectRoot "src\Zeitlind.Runtime\ApplicationBuildInfo.cs"
 $intermediateOutput = Join-Path $projectRoot "artifacts\intermediate"
 $zzzHookOutput = Join-Path $intermediateOutput "hook-zzz"
 $hsrHookOutput = Join-Path $intermediateOutput "hook-hsr"
@@ -243,7 +243,7 @@ foreach ($currentConfiguration in $configurations) {
         throw "Expected exactly one $currentConfiguration Host file named Zeitlind.exe, found: $names"
     }
 
-    $assetName = "Zeitlind_v$($applicationVersion)_$currentConfiguration.exe"
+    $assetName = "Zeitlind_v$($applicationVersion)_$($currentConfiguration)_cli.exe"
     $preparedAssetPath = Join-Path $preparedOutput $assetName
     Copy-Item -LiteralPath $appFiles[0].FullName -Destination $preparedAssetPath
     Assert-ExecutableMetadata -Path $preparedAssetPath
@@ -251,7 +251,7 @@ foreach ($currentConfiguration in $configurations) {
 
 $expectedNames = @(
     $configurations | ForEach-Object {
-        "Zeitlind_v$($applicationVersion)_$($_).exe"
+        "Zeitlind_v$($applicationVersion)_$($_)_cli.exe"
     }
 )
 $preparedFiles = @(Get-ChildItem -LiteralPath $preparedOutput -File)
@@ -283,10 +283,10 @@ foreach ($preparedFile in $preparedFiles) {
 }
 
 $currentVersionNames = @(
-    "Zeitlind_v$($applicationVersion)_Release.exe"
-    "Zeitlind_v$($applicationVersion)_Debug.exe"
+    "Zeitlind_v$($applicationVersion)_Release_cli.exe"
+    "Zeitlind_v$($applicationVersion)_Debug_cli.exe"
 )
-$managedAssetPattern = '^Zeitlind_v.+_(?:Release|Debug)\.exe$'
+$managedAssetPattern = '^Zeitlind_v.+_(?:Release|Debug)(?:_cli)?\.exe$'
 $oldBuildFiles = @(
     Get-ChildItem -LiteralPath $buildOutput -File | Where-Object {
         $_.Name -match $managedAssetPattern -and

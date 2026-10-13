@@ -1,0 +1,191 @@
+using Zeitlind.Core.Achievements;
+using Zeitlind.Core.Games;
+using Zeitlind.Core.Profiles;
+using Zeitlind.Formats.Backup;
+using Zeitlind.Formats.Zzz;
+using Zeitlind.Protocol.Achievements;
+using Zeitlind.Protocol.Capture;
+using Zeitlind.Protocol.Metadata;
+using Zeitlind.Runtime.Infrastructure;
+
+namespace Zeitlind.Runtime.Games;
+
+internal sealed class ZzzCnGameModule : IGameModule
+{
+    private const string ProductionMarker = "CNPRODWin";
+    private const string SupportedVersionPrefix = "CNPRODWin";
+
+    public static ZzzCnGameModule Instance { get; } = new();
+
+    public GameDescriptor Descriptor { get; } =
+        new(
+            GameKind.ZZZ,
+            "zzz-cn",
+            "绝区零国服",
+            "ZenlessZoneZero.exe",
+            "ZenlessZoneZero",
+            @"Software\miHoYo\HYP\1_1\nap_cn",
+            "Zeitlind.Hooks.zzz.dll",
+            "ZeitlindZzzHookMain"
+        );
+
+    public string ValidateInstallation(string executablePath)
+    {
+        var directory = Path.GetDirectoryName(executablePath) ?? throw new InvalidDataException("无法确定游戏安装目录");
+        var versionPath = Path.Combine(directory, "version_info");
+        if (!File.Exists(versionPath))
+        {
+            throw new FileNotFoundException("游戏目录缺少 version_info，无法确认绝区零渠道", versionPath);
+        }
+
+        var marker = BoundedTextFile.ReadAllText(versionPath, "version_info").Trim();
+        if (!marker.StartsWith(ProductionMarker, StringComparison.Ordinal))
+        {
+            throw new InvalidDataException($"构建标记 {marker} 不是 Zeitlind 支持的绝区零国服正式渠道");
+        }
+
+        if (!marker.StartsWith(SupportedVersionPrefix, StringComparison.Ordinal))
+        {
+            throw new InvalidDataException($"构建标记为 {marker}；当前 Zeitlind 仅支持绝区零国服");
+        }
+
+        EnsureGameAssembly(directory);
+        return marker;
+    }
+
+    public IGameCaptureAdapter CreateCaptureAdapter(AchievementCatalog catalog, string gameVersion)
+    {
+        return new ZzzCaptureAdapter(catalog, gameVersion);
+    }
+
+    public string Serialize(ExportTarget target, AchievementSnapshot snapshot, ulong? uid, AchievementCatalog catalog)
+    {
+        var confirmedUid = uid ?? throw new InvalidOperationException("绝区零导出需要已确认的 UID");
+        return target switch
+        {
+            ExportTarget.AchievementBackup => AchievementBackupExporter.Serialize(
+                snapshot,
+                confirmedUid,
+                catalog.LatestVersion,
+                catalog.Count
+            ),
+            ExportTarget.Liyin => ZzzLiyinExporter.Serialize(snapshot, confirmedUid),
+            ExportTarget.Uiaf => ZzzUiafExporter.Serialize(snapshot, confirmedUid),
+            _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
+        };
+    }
+
+    public string BuildExportSummary(ExportTarget target, AchievementSnapshot snapshot, AchievementCatalog catalog)
+    {
+        var completed = snapshot.Records.Count(static record => record.IsCompleted);
+        return target switch
+        {
+            ExportTarget.AchievementBackup =>
+                $"导出完成：保留服务端返回的 {snapshot.Records.Count} 条绝区零成就记录，其中 {completed} 条已完成",
+            ExportTarget.Liyin => $"导出完成：写入 {completed} 条具有完成证据的绝区零成就 ID",
+            ExportTarget.Uiaf => $"导出完成：写入服务端实际返回的 {snapshot.Records.Count} 条绝区零成就记录",
+            _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
+        };
+    }
+
+    private static void EnsureGameAssembly(string directory)
+    {
+        var path = Path.Combine(directory, "GameAssembly.dll");
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException("绝区零目录缺少 GameAssembly.dll", path);
+        }
+    }
+
+    private sealed class ZzzCaptureAdapter : IGameCaptureAdapter
+    {
+        private static readonly ZzzAchievementProtocolProfile Profile = new()
+        {
+            FullSnapshotCommandId = 5883,
+            RecordFieldPath = "$.15.1067.10[]",
+            IdFieldNumber = 1,
+            FinishTimestampFieldNumber = 3,
+            CompletedFlagFieldNumber = 4,
+        };
+
+        private readonly ZzzAchievementSnapshotDecoder _decoder;
+        private readonly PacketCaptureDiagnostics _diagnostics = new();
+        private readonly LocalPlayerLogUidSource _playerLogUidSource = new(
+            LocalLogUidFiles.Zzz,
+            10_000_000,
+            9_999_999_999
+        );
+
+        public ZzzCaptureAdapter(AchievementCatalog catalog, string gameVersion)
+        {
+            _decoder = new ZzzAchievementSnapshotDecoder(catalog, gameVersion, Profile);
+        }
+
+        public string StartInstruction => "请正常登录；Zeitlind 会等待绝区零完整成就快照和本地日志中的当前 UID";
+
+        public void OnHookReady(HookReadyMessage message)
+        {
+            ApplicationLog.WriteDebug(
+                $"绝区零 Hook：解析器 RVA 0x{message.ParserRva:X}，定位版本 {message.ParserLocatorVersion}",
+                writeToConsole: true
+            );
+        }
+
+        public void ObservePacket(CapturedPacket packet)
+        {
+            _diagnostics.Observe(packet);
+        }
+
+        public bool TryReadIdentity(out PlayerIdentityEvidence evidence)
+        {
+            if (_playerLogUidSource.TryReadNewUid(out var playerLogUid, out var detail))
+            {
+                evidence = new PlayerIdentityEvidence(playerLogUid, detail);
+                return true;
+            }
+
+            evidence = default;
+            return false;
+        }
+
+        public string FormatIdentityDiagnostics()
+        {
+            return _playerLogUidSource.FormatDiagnostics();
+        }
+
+        public bool TryDecodeSnapshot(CapturedPacket packet, out AchievementSnapshot? snapshot)
+        {
+            return _decoder.TryDecode(packet, out snapshot);
+        }
+
+        public string FormatDiagnostics()
+        {
+            var diagnostic = _decoder.BestCandidate;
+            var candidate = diagnostic is null
+                ? "成就候选：尚未发现至少 3 条且元数据命中率达到 60% 的记录组"
+                : $"最佳成就候选：{FormatCandidateDiagnostic(diagnostic)}";
+            return $"{_diagnostics.FormatForLog(limit: 12)}；绝区零正式协议：命令 {Profile.FullSnapshotCommandId}，路径 {Profile.RecordFieldPath}；{candidate}";
+        }
+
+        public string FormatSnapshotDetails(AchievementSnapshot snapshot)
+        {
+            return $"命令 {snapshot.SourceCommandId}，路径 {snapshot.RecordFieldPath}，"
+                + $"ID/完成时间/完成标志字段 {snapshot.IdFieldNumber}/{Display(snapshot.FinishTimestampFieldNumber)}/"
+                + $"{Display(snapshot.CompletedFlagFieldNumber)}";
+        }
+
+        private static string Display(uint? value)
+        {
+            return value?.ToString() ?? "未识别";
+        }
+
+        private static string FormatCandidateDiagnostic(AchievementCandidateDiagnostic diagnostic)
+        {
+            return $"命令 {diagnostic.CommandId}，路径 {diagnostic.RecordFieldPath}，"
+                + $"ID 字段 {diagnostic.IdFieldNumber}，完成时间字段 {Display(diagnostic.FinishTimestampFieldNumber)}，"
+                + $"完成标志字段 {Display(diagnostic.CompletedFlagFieldNumber)}；记录 {diagnostic.RecordCount} 条，"
+                + $"元数据命中 {diagnostic.CatalogMatchCount} 条，未知 ID {diagnostic.UnknownIdCount} 条，"
+                + $"完成证据 {diagnostic.CompletionEvidenceCount} 条；{diagnostic.Decision}";
+        }
+    }
+}

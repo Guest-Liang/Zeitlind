@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Zeitlind.Core\Zeitlind.Core.csproj" />
+    <ProjectReference Include="..\Zeitlind.Formats\Zeitlind.Formats.csproj" />
+    <ProjectReference Include="..\Zeitlind.Protocol\Zeitlind.Protocol.csproj" />
+    <InternalsVisibleTo Include="Zeitlind" />
+    <InternalsVisibleTo Include="Zeitlind.Desktop" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(ZzzHookBinaryPath)' != '' and Exists('$(ZzzHookBinaryPath)')">
+    <EmbeddedResource Include="$(ZzzHookBinaryPath)" LogicalName="Zeitlind.Hooks.zzz.dll" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(HsrHookBinaryPath)' != '' and Exists('$(HsrHookBinaryPath)')">
+    <EmbeddedResource Include="$(HsrHookBinaryPath)" LogicalName="Zeitlind.Hooks.hsr.dll" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(GenshinHookBinaryPath)' != '' and Exists('$(GenshinHookBinaryPath)')">
+    <EmbeddedResource Include="$(GenshinHookBinaryPath)" LogicalName="Zeitlind.Hooks.gi.dll" />
+  </ItemGroup>
+
+  <Target
+    Name="ValidateEmbeddedHooks"
+    BeforeTargets="PrepareForBuild"
+    Condition="'$(RequireEmbeddedHook)' == 'true'"
+  >
+    <Error
+      Condition="'$(ZzzHookBinaryPath)' == '' or '$(HsrHookBinaryPath)' == '' or '$(GenshinHookBinaryPath)' == ''"
+      Text="ZzzHookBinaryPath, HsrHookBinaryPath and GenshinHookBinaryPath must point to the published NativeAOT hook libraries."
+    />
+    <Error
+      Condition="!Exists('$(ZzzHookBinaryPath)') or !Exists('$(HsrHookBinaryPath)') or !Exists('$(GenshinHookBinaryPath)')"
+      Text="One or more required Zeitlind hook libraries were not found."
+    />
+  </Target>
+</Project>

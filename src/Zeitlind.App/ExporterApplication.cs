@@ -1,6 +1,6 @@
-using System.Diagnostics;
 using Zeitlind.App.Infrastructure;
-using Zeitlind.Protocol.Metadata;
+using Zeitlind.Runtime;
+using Zeitlind.Runtime.Infrastructure;
 
 namespace Zeitlind.App;
 
@@ -104,7 +104,7 @@ internal static class ExporterApplication
             }
         }
 
-        EnsureGameIsNotRunning(selection);
+        ExportService.EnsureGameIsNotRunning(selection);
         if (!ElevationManager.IsAdministrator())
         {
             ApplicationLog.WriteInfo($"游戏：{selection.Module.Descriptor.DisplayName}");
@@ -115,26 +115,28 @@ internal static class ExporterApplication
             return RelaunchedAsAdministratorExitCode;
         }
 
-        using var extractedHook =
-            EmbeddedHook.TryExtract(selection.Module)
-            ?? throw new InvalidOperationException(
-                $"当前构建没有内嵌 {selection.Module.Descriptor.DisplayName} Hook DLL；请使用完整 Zeitlind"
+        using var cancellation = new CancellationTokenSource();
+        ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
+        {
+            eventArgs.Cancel = true;
+            cancellation.Cancel();
+        };
+        Console.CancelKeyPress += cancelHandler;
+        try
+        {
+            ApplicationLog.WriteInfo("按 Ctrl+C 可取消");
+            var capture = await ExportService.CaptureAsync(
+                selection.ExecutablePath,
+                cancellationToken: cancellation.Token
             );
-        var catalog = AchievementCatalog.LoadBundled(selection.Module.Descriptor.Kind);
-
-        ApplicationLog.WriteInfo($"游戏：{selection.Module.Descriptor.DisplayName}");
-        ApplicationLog.WriteInfo($"游戏路径：{selection.ExecutablePath}");
-        ApplicationLog.WriteInfo($"游戏版本：{selection.Version}");
-        ApplicationLog.WriteInfo($"成就元数据：{catalog.LatestVersion}（{catalog.Count} 项）");
-        ApplicationLog.WriteInfo("正在启动游戏");
-
-        return await AchievementExportSession.RunAsync(
-            selection,
-            extractedHook.Path,
-            catalog,
-            options.ExportTarget,
-            outputDirectory
-        );
+            var target = ExportSelectionFlow.Select(selection.Module, options.ExportTarget, cancellation.Token);
+            await capture.SaveAsync(target, outputDirectory, cancellation.Token);
+            return 0;
+        }
+        finally
+        {
+            Console.CancelKeyPress -= cancelHandler;
+        }
     }
 
     private static bool TryParseArguments(string[] args, out ApplicationOptions options, out string? error)
@@ -265,28 +267,6 @@ internal static class ExporterApplication
         {
             Console.WriteLine(usage);
             Console.WriteLine("--game 通过 EXE 文件名自动识别游戏并选择对应 Hook；--output 不存在时会自动创建。");
-        }
-    }
-
-    private static void EnsureGameIsNotRunning(GameSelection selection)
-    {
-        var descriptor = selection.Module.Descriptor;
-        var processes = Process.GetProcessesByName(descriptor.ProcessName);
-        try
-        {
-            if (processes.Length != 0)
-            {
-                throw new InvalidOperationException(
-                    $"检测到{descriptor.DisplayName}已经在运行，请先退出游戏，再运行 Zeitlind"
-                );
-            }
-        }
-        finally
-        {
-            foreach (var process in processes)
-            {
-                process.Dispose();
-            }
         }
     }
 }

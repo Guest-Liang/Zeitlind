@@ -25,6 +25,20 @@ Zeitlind 是 Windows x64 下的游戏成就导出工具
 
 ## 使用方法
 
+### GUI（WPF / .NET 10）
+
+GUI为 Windows x64 自包含单文件 `Zeitlind_v<version>_Release_desktop.exe`。无需安装，也无需预装 .NET 或 Windows App SDK。
+
+1. 完全退出需要导出的游戏，双击 GUI EXE，允许启动时的 Windows 管理员权限请求。
+2. 在游戏列表中点击“导出成就”。列表显示注册表检测到的绝区零、崩坏：星穹铁道和原神国服，可点击“刷新列表”重新检测。
+3. 如果没有检测到安装，点击“选择游戏 EXE…”打开文件选择器，进入游戏安装目录，选择 `ZenlessZoneZero.exe`、`StarRail.exe` 或 `YuanShen.exe`。选择成功后再点击“导出成就”。
+4. 正常登录并进入游戏。窗口会显示读取进度；得到完整快照后，会请求本次启动的游戏正常退出，10 秒超时后再强制关闭。
+5. 选择导出格式并点击“保存文件”。结果写入 EXE 旁边的 `Exports` 文件夹，可直接打开输出目录；保存失败时数据仍保留在当前窗口，可以重试。
+
+### CLI
+
+CLI继续作为独立的 NativeAOT 单 EXE 提供，文件名为 `Zeitlind_v<version>_Release_cli.exe`。Release 用于日常导出；Debug 保留更详细的诊断日志。参数与交互菜单保留：
+
 1. 完全退出正在运行的游戏。
 2. 双击运行本程序。
 3. 在游戏菜单中选择注册表检测到的安装，或选择需要导出成就的游戏。菜单会直接显示每款游戏的注册表检测状态。
@@ -35,16 +49,16 @@ Zeitlind 是 Windows x64 下的游戏成就导出工具
 
 ```powershell
 # 指定游戏目录
-.\Zeitlind_<version>_Release.exe --game "D:\Games\ZenlessZoneZero Game"
+.\Zeitlind_v<version>_Release_cli.exe --game "D:\Games\ZenlessZoneZero Game"
 
 # 直接指定 EXE
-.\Zeitlind_<version>_Release.exe --game "D:\Games\Star Rail\Games\StarRail.exe"
+.\Zeitlind_v<version>_Release_cli.exe --game "D:\Games\Star Rail\Games\StarRail.exe"
 
 # 原神国服
-.\Zeitlind_<version>_Release.exe --game "D:\Games\Genshin Impact Game\YuanShen.exe" --format uiaf
+.\Zeitlind_v<version>_Release_cli.exe --game "D:\Games\Genshin Impact Game\YuanShen.exe" --format uiaf
 
 # 非交互导出；目标目录不存在时会自动创建
-.\Zeitlind_<version>_Release.exe --game "D:\Games\Star Rail\Games\StarRail.exe" `
+.\Zeitlind_v<version>_Release_cli.exe --game "D:\Games\Star Rail\Games\StarRail.exe" `
   --format liyin `
   --output "D:\AchievementBackups\2026"
 ```
@@ -68,6 +82,28 @@ Zeitlind.exe --version
 | 绝区零国服 | `ZenlessZoneZero.exe` | `HKCU\Software\miHoYo\HYP\1_1\nap_cn\GameInstallPath` |
 | 崩坏：星穹铁道国服 | `StarRail.exe` | `HKCU\Software\miHoYo\HYP\1_1\hkrpg_cn\GameInstallPath` |
 | 原神国服 | `YuanShen.exe` | `HKCU\Software\miHoYo\HYP\1_1\hk4e_cn\GameInstallPath` |
+
+## 从源码构建
+
+开发需要 `global.json` 指定的 .NET 10 SDK，以及 Visual Studio 的 C++ 桌面开发工具链和 Windows SDK（用于构建原生 Hook）。
+
+```powershell
+# 发布 WPF 单 EXE，同时构建三个原生 Hook 和 Release CLI
+.\build-desktop.ps1
+
+# 构建全部 GitHub 发布产物：CLI Release、CLI Debug、Desktop Release
+.\build-desktop.ps1 -Configuration Release -IncludeCliDebug
+
+# 单独构建 CLI 的 Release 和 Debug 版本
+.\build.ps1
+
+# 常规编译，不作为含 Hook 的正式发布产物
+dotnet build .\Zeitlind.slnx -c Release
+```
+
+GUI位于 `artifacts\desktop\Zeitlind_v<version>_Release_desktop.exe`，CLI 位于 `artifacts\build`。`build-desktop.ps1` 会检查发布目录递归仅包含一个 EXE，并校验版本资源；如果出现附带 DLL、配置文件或其他文件，会直接报错。
+
+GitHub Release 和 Actions artifact 同时包含三份独立 EXE：`Zeitlind_v<version>_Release_cli.exe`、`Zeitlind_v<version>_Debug_cli.exe`、`Zeitlind_v<version>_Release_desktop.exe`。GUI公开发布 Release；需要诊断版时可在本地执行 `.\build-desktop.ps1 -Configuration Debug`，生成 `Zeitlind_v<version>_Debug_desktop.exe`。
 
 ## 导出格式
 
