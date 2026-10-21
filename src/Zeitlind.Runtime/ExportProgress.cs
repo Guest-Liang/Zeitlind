@@ -3,6 +3,8 @@ namespace Zeitlind.Runtime;
 internal enum ExportStage
 {
     Starting,
+    LoadingHook,
+    ConnectingHook,
     WaitingForLogin,
     ReadingAchievements,
     ConfirmingAccount,

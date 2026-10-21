@@ -14,15 +14,8 @@ internal static class GameLocator
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey(descriptor.RegistryPath);
-            var value =
-                key?.GetValue(InstallPathValue, null, RegistryValueOptions.DoNotExpandEnvironmentNames) as string;
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                return new RegistryGameStatus(module, null, "未检测到注册表路径");
-            }
-
-            var resolved = ResolveForModule(module, value);
-            return new RegistryGameStatus(module, resolved, null);
+            var value = key?.GetValue(InstallPathValue, null, RegistryValueOptions.DoNotExpandEnvironmentNames);
+            return ResolveRegistryValue(module, value);
         }
         catch (Exception exception)
             when (exception
@@ -33,8 +26,41 @@ internal static class GameLocator
                         or UnauthorizedAccessException
             )
         {
-            ApplicationLog.WriteDebug($"{descriptor.DisplayName} 注册表路径无效：{exception}", writeToConsole: false);
-            return new RegistryGameStatus(module, null, exception.Message);
+            ApplicationLog.WriteWarningException($"{descriptor.DisplayName} 注册表读取失败", exception);
+            return new RegistryGameStatus(module, RegistryGameState.ReadFailed, null, exception.Message);
+        }
+    }
+
+    private static RegistryGameStatus ResolveRegistryValue(IGameModule module, object? value)
+    {
+        if (value is null || value is string text && string.IsNullOrWhiteSpace(text))
+        {
+            return new RegistryGameStatus(module, RegistryGameState.NotDetected, null, "未检测到注册表路径");
+        }
+        if (value is not string configuredPath)
+        {
+            return new RegistryGameStatus(module, RegistryGameState.InvalidPath, null, "注册表中的游戏路径不是文本");
+        }
+
+        try
+        {
+            var resolved = ResolveForModule(module, configuredPath);
+            return new RegistryGameStatus(module, RegistryGameState.Detected, resolved, null);
+        }
+        catch (Exception exception)
+            when (exception
+                    is ArgumentException
+                        or IOException
+                        or InvalidDataException
+                        or SecurityException
+                        or UnauthorizedAccessException
+            )
+        {
+            ApplicationLog.WriteDebug(
+                $"{module.Descriptor.DisplayName} 注册表路径无效：{exception}",
+                writeToConsole: false
+            );
+            return new RegistryGameStatus(module, RegistryGameState.InvalidPath, null, exception.Message);
         }
     }
 
@@ -90,11 +116,3 @@ internal static class GameLocator
 }
 
 internal sealed record ResolvedGame(IGameModule Module, string ExecutablePath);
-
-internal sealed record RegistryGameStatus(IGameModule Module, string? ExecutablePath, string? Error)
-{
-    public string MenuText =>
-        ExecutablePath is not null
-            ? $"{Module.Descriptor.DisplayName}（注册表：已检测 {ExecutablePath}）"
-            : $"{Module.Descriptor.DisplayName}（注册表：{Error ?? "未检测"}）";
-}

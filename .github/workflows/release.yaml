@@ -90,7 +90,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
 
-          & .\build-desktop.ps1 -Configuration Release -IncludeCliDebug
+          & .\build-all.ps1
           if ($LASTEXITCODE -ne 0) {
             throw "Building CLI and Desktop executables failed with exit code $LASTEXITCODE."
           }

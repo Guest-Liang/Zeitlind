@@ -12,23 +12,21 @@ internal static class ExportFormats
             [
                 new(ExportTarget.AchievementBackup, "成就数据备份 · 保留全部原始字段"),
                 new(ExportTarget.Uiaf, "UIAF v1.1"),
-                new(ExportTarget.UiafV12, "UIAF v1.2 · 实验性 / 非官方"),
+                new(ExportTarget.UiafV12, "UIAF v1.2 · 实验性 / 非官方", IsExperimental: true),
             ]
             :
             [
                 new(ExportTarget.AchievementBackup, "成就数据备份 · 保留全部原始字段"),
                 new(ExportTarget.Liyin, "Liyin JSON · 仅已完成成就"),
-                new(ExportTarget.Uiaf, "UIAF v1.2 · 实验性 / 非官方"),
+                new(ExportTarget.Uiaf, "UIAF v1.2 · 实验性 / 非官方", IsExperimental: true),
             ];
     }
 
-    public static void Validate(IGameModule module, ExportTarget target)
+    public static ExportFormatOption Validate(IGameModule module, ExportTarget target)
     {
-        if (!For(module).Any(option => option.Target == target))
-        {
-            throw new InvalidDataException($"{module.Descriptor.DisplayName}不支持所选导出格式");
-        }
+        return For(module).FirstOrDefault(option => option.Target == target)
+            ?? throw new InvalidDataException($"{module.Descriptor.DisplayName}不支持所选导出格式");
     }
 }
 
-internal sealed record ExportFormatOption(ExportTarget Target, string Label);
+internal sealed record ExportFormatOption(ExportTarget Target, string Label, bool IsExperimental = false);

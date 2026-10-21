@@ -36,29 +36,52 @@ public partial class MainWindow : Window
 
     private void Refresh_Click(object sender, RoutedEventArgs e) => RefreshGames(showStatus: true);
 
-    private void RefreshGames(bool showStatus = false)
+    private bool RefreshGames(bool showStatus = false)
     {
         if (_operationCancellation is not null)
         {
-            return;
+            return false;
         }
         try
         {
-            var games = ExportService.DiscoverGames().Select(static status => new GameCard(status)).ToArray();
-            GamesList.ItemsSource = games;
-            if (showStatus)
+            var statuses = ExportService.DiscoverGames();
+            GamesList.ItemsSource = statuses.Select(static status => new GameCard(status)).ToArray();
+            var invalidPathCount = statuses.Count(static status => status.State == RegistryGameState.InvalidPath);
+            var readFailedCount = statuses.Count(static status => status.State == RegistryGameState.ReadFailed);
+            var hasIssues = invalidPathCount + readFailedCount != 0;
+            if (showStatus || hasIssues)
             {
-                var detectedCount = games.Count(static game => game.IsAvailable);
+                var detectedCount = statuses.Count(static status => status.IsDetected);
+                var missingCount = statuses.Count(static status => status.State == RegistryGameState.NotDetected);
+                var parts = new List<string> { $"检测到 {detectedCount} / {statuses.Length} 款游戏" };
+                if (missingCount != 0)
+                {
+                    parts.Add($"{missingCount} 款未检测到安装");
+                }
+                if (invalidPathCount != 0)
+                {
+                    parts.Add($"{invalidPathCount} 项路径无效");
+                }
+                if (readFailedCount != 0)
+                {
+                    parts.Add($"{readFailedCount} 项读取失败");
+                }
+                var hint = hasIssues
+                    ? "请查看对应游戏卡片的原因，也可手动选择 EXE。"
+                    : "未检测到的游戏可手动选择 EXE。";
                 SetStatus(
-                    "注册表读取完成",
-                    $"已重新读取注册表并更新游戏路径，检测到 {detectedCount} / {games.Length} 款游戏。\n"
-                        + $"未检测到的游戏可手动选择 EXE。更新时间：{DateTime.Now:HH:mm:ss}。"
+                    hasIssues ? "注册表读取完成 · 请检查提示" : "注册表读取完成",
+                    $"已重新读取注册表并更新游戏路径，{string.Join("，", parts)}。\n"
+                        + $"{hint}更新时间：{DateTime.Now:HH:mm:ss}。",
+                    isError: hasIssues
                 );
             }
+            return !hasIssues;
         }
         catch (Exception exception)
         {
             ShowError("读取注册表失败", exception);
+            return false;
         }
     }
 
@@ -257,8 +280,10 @@ public partial class MainWindow : Window
         _resultDirectory = null;
         SavePanel.Visibility = Visibility.Collapsed;
         SetBusy(false);
-        RefreshGames();
-        SetStatus("准备就绪", "选择游戏，开始下一次成就导出。");
+        if (RefreshGames())
+        {
+            SetStatus("准备就绪", "选择游戏，开始下一次成就导出。");
+        }
         GameActions.BringIntoView();
     }
 
@@ -297,8 +322,8 @@ internal sealed class GameCard(RegistryGameStatus status)
 {
     public string Name => status.Module.Descriptor.DisplayName;
     public string? ExecutablePath => status.ExecutablePath;
-    public bool IsAvailable => ExecutablePath is not null;
-    public string Detail => ExecutablePath ?? $"{status.Error ?? "未检测到安装"} · 可手动选择";
+    public bool IsAvailable => status.IsDetected;
+    public string Detail => ExecutablePath ?? $"{status.Description} · 可手动选择";
     public string ExportLabel => $"导出{Name}成就";
     public string Badge => status.Module.Descriptor.Kind.ToString();
     public string BadgeBackground =>

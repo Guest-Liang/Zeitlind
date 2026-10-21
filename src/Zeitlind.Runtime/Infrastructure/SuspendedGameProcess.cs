@@ -168,9 +168,10 @@ internal sealed class SuspendedGameProcess : IDisposable
         }
     }
 
-    public async Task<bool> TryCloseGracefullyAsync(TimeSpan timeout)
+    public async Task<bool> TryCloseGracefullyAsync(TimeSpan timeout, CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        cancellationToken.ThrowIfCancellationRequested();
         if (timeout <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(timeout), "等待时间必须大于零");
@@ -197,13 +198,14 @@ internal sealed class SuspendedGameProcess : IDisposable
             return false;
         }
 
-        using var timeoutCancellation = new CancellationTokenSource(timeout);
+        using var timeoutCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCancellation.CancelAfter(timeout);
         try
         {
             await WaitForExitAsync(timeoutCancellation.Token);
             return true;
         }
-        catch (OperationCanceledException) when (timeoutCancellation.IsCancellationRequested)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             return false;
         }
@@ -215,6 +217,7 @@ internal sealed class SuspendedGameProcess : IDisposable
 
         while (true)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var waitResult = NativeMethods.WaitForSingleObject(_processHandle, 0);
             if (waitResult == NativeMethods.WaitObject0)
             {

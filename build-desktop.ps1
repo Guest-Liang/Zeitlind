@@ -2,39 +2,30 @@
 param(
     [ValidateSet("Debug", "Release")]
     [string] $Configuration = "Release",
-    [switch] $IncludeCliDebug
+    [switch] $IncludeCliDebug,
+    [switch] $SkipHookBuild
 )
 
 $ErrorActionPreference = "Stop"
 $projectRoot = (Resolve-Path -LiteralPath $PSScriptRoot).Path
+. (Join-Path $projectRoot 'tools\build-common.ps1')
 $desktopProject = Join-Path $projectRoot "src\Zeitlind.Desktop\Zeitlind.Desktop.csproj"
-$versionSource = Get-Content -LiteralPath (Join-Path $projectRoot "src\Zeitlind.Runtime\ApplicationBuildInfo.cs") -Raw
-$versionMatches = [regex]::Matches($versionSource, 'public\s+const\s+string\s+Version\s*=\s*"([^"]+)"\s*;')
-if ($versionMatches.Count -ne 1) {
-    throw "Expected exactly one ApplicationBuildInfo.Version constant."
-}
-$version = $versionMatches[0].Groups[1].Value
-if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$') {
-    throw "Unsupported application version '$version'."
-}
+$version = Read-ApplicationVersion -ProjectRoot $projectRoot
+$applicationMetadata = Read-ApplicationMetadata -ProjectPath $desktopProject
 $fileVersion = ($version -split '-')[0] + '.0'
 
-# Build the existing CLI and all three native hooks before bundling the WPF application.
+# Build native hooks independently; the desktop-only path does not publish the CLI.
+if (-not $SkipHookBuild) {
+    & (Join-Path $projectRoot 'build-hooks.ps1')
+}
+$hookPaths = Get-EmbeddedHookPaths -ProjectRoot $projectRoot
 if ($IncludeCliDebug) {
-    & (Join-Path $projectRoot "build.ps1")
-}
-else {
-    & (Join-Path $projectRoot "build.ps1") -Configuration $Configuration
-}
-if ($LASTEXITCODE -ne 0) {
-    throw "Building the CLI and native hooks failed with exit code $LASTEXITCODE."
+    & (Join-Path $projectRoot 'build.ps1') -SkipHookBuild
 }
 
 $intermediate = Join-Path $projectRoot "artifacts\intermediate"
-$staging = Join-Path $intermediate ("desktop-" + [guid]::NewGuid().ToString('N'))
-$zzzHook = Join-Path $intermediate "hook-zzz\Zeitlind.Hook.Zzz.dll"
-$hsrHook = Join-Path $intermediate "hook-hsr\Zeitlind.Hook.Hsr.dll"
-$genshinHook = Join-Path $intermediate "hook-ys\Zeitlind.Hook.Genshin.dll"
+$staging = Join-Path $intermediate "desktop-$Configuration"
+Reset-OutputDirectory -ProjectRoot $projectRoot -Path $staging
 
 Write-Host "Publishing WPF .NET 10 self-contained single EXE ($Configuration)..."
 & dotnet publish $desktopProject `
@@ -42,9 +33,9 @@ Write-Host "Publishing WPF .NET 10 self-contained single EXE ($Configuration)...
     --runtime win-x64 `
     --self-contained true `
     --output $staging `
-    "-p:ZzzHookBinaryPath=$zzzHook" `
-    "-p:HsrHookBinaryPath=$hsrHook" `
-    "-p:GenshinHookBinaryPath=$genshinHook" `
+    "-p:ZzzHookBinaryPath=$($hookPaths.Zzz)" `
+    "-p:HsrHookBinaryPath=$($hookPaths.Hsr)" `
+    "-p:GenshinHookBinaryPath=$($hookPaths.Genshin)" `
     "-p:RequireEmbeddedHook=true" `
     "-p:Version=$version" `
     "-p:AssemblyVersion=$fileVersion" `
@@ -59,10 +50,7 @@ $files = @(Get-ChildItem -LiteralPath $staging -Recurse -File)
 if ($files.Count -ne 1 -or $files[0].Name -ne "Zeitlind.Desktop.exe") {
     throw "Expected exactly one Zeitlind.Desktop.exe, found: $($files.Name -join ', ')"
 }
-$metadata = [Diagnostics.FileVersionInfo]::GetVersionInfo($files[0].FullName)
-if ($metadata.FileVersion -ne $fileVersion -or $metadata.ProductVersion -ne $version) {
-    throw "Published desktop version resources do not match source version $version."
-}
+Assert-ExecutableMetadata -Path $files[0].FullName -Metadata $applicationMetadata -Version $version -ManagedTargetExtension '.dll'
 
 # Only replace this named build artifact; preserve any user exports or logs beside it.
 $outputDirectory = Join-Path $projectRoot "artifacts\desktop"

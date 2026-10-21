@@ -1,5 +1,4 @@
 using Zeitlind.App.Infrastructure;
-using Zeitlind.Core.Games;
 using Zeitlind.Runtime;
 using Zeitlind.Runtime.Games;
 using Zeitlind.Runtime.Infrastructure;
@@ -8,13 +7,6 @@ namespace Zeitlind.App;
 
 internal static class ExportSelectionFlow
 {
-    private static readonly ExportOption[] Options =
-    [
-        new(ExportTarget.AchievementBackup, "Zeitlind 成就数据备份（保留全部原始字段）"),
-        new(ExportTarget.Liyin, "Zeitlind Liyin JSON（仅包含已完成的成就）"),
-        new(ExportTarget.Uiaf, "Zeitlind 实验性 UIAF v1.2"),
-    ];
-
     public static ExportTarget Select(
         IGameModule module,
         ExportTarget? configuredTarget,
@@ -23,7 +15,7 @@ internal static class ExportSelectionFlow
     {
         if (configuredTarget is { } target)
         {
-            EnsureSupported(module, target);
+            ValidateTarget(module, target);
             return target;
         }
 
@@ -35,21 +27,21 @@ internal static class ExportSelectionFlow
 
         Console.WriteLine();
         ApplicationLog.WriteInfo($"请选择 {module.Descriptor.DisplayName} 导出格式（↑/↓ 选择，Enter 确认）：");
-        var options = OptionsFor(module);
+        var options = ExportFormats.For(module);
         var labels = options.Select(static option => option.Label).ToArray();
         var selected = ConsoleSelectionMenu.Read(labels, 0, cancellationToken);
         var option = options[selected];
         ApplicationLog.WriteInfo($"已选择：{option.Label}");
         target = option.Target;
-        WarnIfExperimental(module, target);
+        WarnIfExperimental(option);
         return target;
     }
 
     public static void ValidateConfiguredTarget(IGameModule module, ExportTarget target)
     {
-        EnsureSupported(module, target);
+        var option = ValidateTarget(module, target);
         ApplicationLog.WriteInfo($"导出格式来源：命令行 --format {ToCliValue(target)}");
-        WarnIfExperimental(module, target);
+        WarnIfExperimental(option);
     }
 
     public static string ToCliValue(ExportTarget target)
@@ -64,41 +56,27 @@ internal static class ExportSelectionFlow
         };
     }
 
-    private static ExportOption[] OptionsFor(IGameModule module)
+    private static ExportFormatOption ValidateTarget(IGameModule module, ExportTarget target)
     {
-        return module.Descriptor.Kind == GameKind.GI
-            ?
-            [
-                new(ExportTarget.AchievementBackup, "Zeitlind 成就数据备份（保留全部原始字段）"),
-                new(ExportTarget.Uiaf, "UIAF v1.1"),
-                new(ExportTarget.UiafV12, "Zeitlind 实验性 UIAF v1.2"),
-            ]
-            : Options;
-    }
-
-    private static void EnsureSupported(IGameModule module, ExportTarget target)
-    {
-        if (module.Descriptor.Kind == GameKind.GI && target == ExportTarget.Liyin)
+        try
         {
-            throw new InvalidDataException("原神国服不支持 --format liyin，请使用 backup、uiaf 或 uiaf12");
+            return ExportFormats.Validate(module, target);
         }
-
-        if (module.Descriptor.Kind != GameKind.GI && target == ExportTarget.UiafV12)
+        catch (InvalidDataException)
         {
+            var supported = string.Join("、", ExportFormats.For(module).Select(option => ToCliValue(option.Target)));
             throw new InvalidDataException(
-                $"{module.Descriptor.DisplayName} 请使用 --format uiaf 导出实验性 UIAF v1.2"
+                $"{module.Descriptor.DisplayName}不支持 --format {ToCliValue(target)}，请使用 {supported}"
             );
         }
     }
 
-    private static void WarnIfExperimental(IGameModule module, ExportTarget target)
+    private static void WarnIfExperimental(ExportFormatOption option)
     {
-        if (target == ExportTarget.UiafV12 || (target == ExportTarget.Uiaf && module.Descriptor.Kind != GameKind.GI))
+        if (option.IsExperimental)
         {
             ApplicationLog.WriteWarning("提示：现行正式 UIAF 尚未定义 v1.2；Zeitlind 目前导出为实验性支持");
             ApplicationLog.WriteWarning("可查看 https://github.com/orgs/UIGF-org/discussions/18 以获取更多信息");
         }
     }
-
-    private readonly record struct ExportOption(ExportTarget Target, string Label);
 }

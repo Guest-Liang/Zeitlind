@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Zeitlind.Core.Achievements;
 using Zeitlind.Protocol.Metadata;
 using Zeitlind.Runtime.Games;
@@ -7,6 +8,8 @@ namespace Zeitlind.Runtime;
 
 internal static class AchievementExportSession
 {
+    private static readonly TimeSpan HookConnectionTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan HookReadyTimeout = TimeSpan.FromSeconds(135);
     private static readonly TimeSpan UidWaitAfterSnapshot = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan LocalUidPollInterval = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan GracefulGameExitTimeout = TimeSpan.FromSeconds(10);
@@ -28,12 +31,11 @@ internal static class AchievementExportSession
 
         cancellationToken.ThrowIfCancellationRequested();
         game.Resume();
-        RemoteHookInjector.Inject(game, hookPath, module.Descriptor.HookEntryPoint);
+        progress?.Report(new ExportProgress(ExportStage.LoadingHook, "正在准备游戏数据读取…"));
+        RemoteHookInjector.Inject(game, hookPath, module.Descriptor.HookEntryPoint, cancellationToken);
 
-        ApplicationLog.WriteInfo(
-            $"{module.Descriptor.DisplayName}已启动且 Hook 已加载。{captureAdapter.StartInstruction}"
-        );
-        progress?.Report(new ExportProgress(ExportStage.WaitingForLogin, captureAdapter.StartInstruction));
+        ApplicationLog.WriteInfo($"{module.Descriptor.DisplayName}已启动且 Hook 已加载，正在等待连接");
+        progress?.Report(new ExportProgress(ExportStage.ConnectingHook, "正在连接游戏，请稍候…"));
 
         var captured = await WaitForSnapshotAsync(pipe, game, captureAdapter, progress, cancellationToken);
         var snapshot = captured.Snapshot;
@@ -50,7 +52,7 @@ internal static class AchievementExportSession
         progress?.Report(new ExportProgress(ExportStage.ClosingGame, "成就已读取，正在关闭本次启动的游戏…"));
         try
         {
-            var closedGracefully = await game.TryCloseGracefullyAsync(GracefulGameExitTimeout);
+            var closedGracefully = await game.TryCloseGracefullyAsync(GracefulGameExitTimeout, cancellationToken);
             if (closedGracefully)
             {
                 ApplicationLog.WriteInfo("游戏已正常退出");
@@ -61,6 +63,10 @@ internal static class AchievementExportSession
                 game.Terminate(0);
                 ApplicationLog.WriteInfo("游戏已强制关闭");
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception exception)
         {
@@ -89,26 +95,40 @@ internal static class AchievementExportSession
         CancellationToken cancellationToken
     )
     {
-        var gameExit = game.WaitForExitAsync(CancellationToken.None);
-        var connection = pipe.WaitForAuthenticatedConnectionAsync(cancellationToken);
-        if (await Task.WhenAny(connection, gameExit) == gameExit)
-        {
-            throw new InvalidOperationException("游戏在 Hook 建立连接前退出");
-        }
-
-        await connection;
-        ApplicationLog.WriteDebug("游戏内 Hook 已连接命名管道", writeToConsole: false);
-
-        var ready = false;
-        var packetCount = 0;
-        AchievementSnapshot? pendingSnapshot = null;
-        DateTimeOffset? uidDeadline = null;
-        ulong? currentUid = null;
-        using var pipeReadCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using var sessionCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using var connectionCancellation = CancellationTokenSource.CreateLinkedTokenSource(sessionCancellation.Token);
+        connectionCancellation.CancelAfter(HookConnectionTimeout);
+        var gameExit = game.WaitForExitAsync(sessionCancellation.Token);
+        var connection = pipe.WaitForAuthenticatedConnectionAsync(connectionCancellation.Token);
         Task<HookMessage>? pendingRead = null;
 
         try
         {
+            if (await Task.WhenAny(connection, gameExit) == gameExit)
+            {
+                await gameExit;
+                throw new InvalidOperationException("游戏在 Hook 建立连接前退出");
+            }
+
+            try
+            {
+                await connection;
+            }
+            catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException("等待游戏连接超时，请重试并查看运行日志", exception);
+            }
+
+            connectionCancellation.CancelAfter(Timeout.InfiniteTimeSpan);
+            ApplicationLog.WriteDebug("游戏内 Hook 已连接命名管道", writeToConsole: false);
+            progress?.Report(new ExportProgress(ExportStage.ConnectingHook, "已连接游戏，正在准备成就读取…"));
+
+            var ready = false;
+            var hookConnectedAt = Stopwatch.GetTimestamp();
+            var packetCount = 0;
+            AchievementSnapshot? pendingSnapshot = null;
+            DateTimeOffset? uidDeadline = null;
+            ulong? currentUid = null;
             while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -124,6 +144,20 @@ internal static class AchievementExportSession
                 }
 
                 var pollDelay = LocalUidPollInterval;
+                if (!ready)
+                {
+                    var remaining = HookReadyTimeout - Stopwatch.GetElapsedTime(hookConnectedAt);
+                    if (remaining <= TimeSpan.Zero)
+                    {
+                        throw new TimeoutException("游戏已连接，但读取组件未能及时就绪，请查看运行日志");
+                    }
+
+                    if (remaining < pollDelay)
+                    {
+                        pollDelay = remaining;
+                    }
+                }
+
                 if (pendingSnapshot is not null && currentUid is null)
                 {
                     var remaining = uidDeadline!.Value - DateTimeOffset.UtcNow;
@@ -138,11 +172,12 @@ internal static class AchievementExportSession
                     }
                 }
 
-                pendingRead ??= pipe.ReadMessageAsync(pipeReadCancellation.Token);
-                var poll = Task.Delay(pollDelay, cancellationToken);
+                pendingRead ??= pipe.ReadMessageAsync(sessionCancellation.Token);
+                var poll = Task.Delay(pollDelay, sessionCancellation.Token);
                 var completed = await Task.WhenAny(pendingRead, gameExit, poll);
                 if (completed == gameExit)
                 {
+                    await gameExit;
                     if (pendingSnapshot is not null && adapter.CanExportWithoutConfirmedUid)
                     {
                         return CompleteWithoutUidOrThrow(pendingSnapshot, adapter);
@@ -191,6 +226,8 @@ internal static class AchievementExportSession
                         ready = true;
                         ApplicationLog.WriteInfo("Hook 已就绪");
                         adapter.OnHookReady(hookReady);
+                        ApplicationLog.WriteInfo(adapter.StartInstruction);
+                        progress?.Report(new ExportProgress(ExportStage.WaitingForLogin, adapter.StartInstruction));
                         break;
 
                     case HookPacketMessage packet:
@@ -258,18 +295,29 @@ internal static class AchievementExportSession
         }
         finally
         {
-            pipeReadCancellation.Cancel();
+            sessionCancellation.Cancel();
+            await ObserveSessionTaskAsync(connection);
             if (pendingRead is not null)
             {
-                try
-                {
-                    await pendingRead;
-                }
-                catch (Exception exception) when (exception is OperationCanceledException or EndOfStreamException)
-                {
-                    // The session is ending and owns this single outstanding pipe read.
-                }
+                await ObserveSessionTaskAsync(pendingRead);
             }
+            await ObserveSessionTaskAsync(gameExit);
+        }
+    }
+
+    private static async Task ObserveSessionTaskAsync(Task task)
+    {
+        try
+        {
+            await task;
+        }
+        catch (Exception exception) when (exception is OperationCanceledException or EndOfStreamException)
+        {
+            // Cancellation and a closed pipe are expected while the session is ending.
+        }
+        catch (Exception exception)
+        {
+            ApplicationLog.WriteWarningException("结束采集后台任务时发生异常", exception);
         }
     }
 

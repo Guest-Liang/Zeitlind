@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Text;
 
 namespace Zeitlind.Runtime.Infrastructure;
@@ -8,11 +9,17 @@ internal static unsafe class RemoteHookInjector
     private const string Kernel32Name = "kernel32.dll";
     private const string LoadLibraryName = "LoadLibraryW";
 
-    public static void Inject(SuspendedGameProcess game, string hookPath, string startExport)
+    public static void Inject(
+        SuspendedGameProcess game,
+        string hookPath,
+        string startExport,
+        CancellationToken cancellationToken
+    )
     {
         ArgumentNullException.ThrowIfNull(game);
         ArgumentException.ThrowIfNullOrWhiteSpace(hookPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(startExport);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var fullHookPath = Path.GetFullPath(hookPath);
         ApplicationLog.WriteInfo(
@@ -44,7 +51,12 @@ internal static unsafe class RemoteHookInjector
         }
 
         var procedureModuleName = ReadLocalModuleName(localProcedureModule);
-        var remoteProcedureModule = FindRemoteModuleBase(game.ProcessId, procedureModuleName, TimeSpan.FromSeconds(10));
+        var remoteProcedureModule = FindRemoteModuleBase(
+            game.ProcessId,
+            procedureModuleName,
+            TimeSpan.FromSeconds(10),
+            cancellationToken
+        );
         var loadLibraryRva = checked(localLoadLibrary - localProcedureModule);
         var remoteLoadLibrary = checked(remoteProcedureModule + loadLibraryRva);
         ApplicationLog.WriteDebug(
@@ -55,9 +67,14 @@ internal static unsafe class RemoteHookInjector
             writeToConsole: false
         );
 
-        LoadRemoteLibrary(game.ProcessHandle, remoteLoadLibrary, fullHookPath);
+        LoadRemoteLibrary(game.ProcessHandle, remoteLoadLibrary, fullHookPath, cancellationToken);
 
-        var remoteHook = FindRemoteModuleBase(game.ProcessId, Path.GetFileName(fullHookPath), TimeSpan.FromSeconds(10));
+        var remoteHook = FindRemoteModuleBase(
+            game.ProcessId,
+            Path.GetFileName(fullHookPath),
+            TimeSpan.FromSeconds(10),
+            cancellationToken
+        );
         var startRva = GetExportRva(fullHookPath, startExport);
         var startAddress = checked(remoteHook + startRva);
         ApplicationLog.WriteDebug(
@@ -70,6 +87,7 @@ internal static unsafe class RemoteHookInjector
             0,
             TimeSpan.FromSeconds(30),
             startExport,
+            cancellationToken,
             out _
         );
         if (exitCode != 0)
@@ -110,10 +128,12 @@ internal static unsafe class RemoteHookInjector
         nint parameter,
         TimeSpan timeout,
         string operation,
+        CancellationToken cancellationToken,
         out bool parameterMayBeInUse
     )
     {
         parameterMayBeInUse = false;
+        cancellationToken.ThrowIfCancellationRequested();
         var thread = NativeMethods.CreateRemoteThread(process, 0, 0, startAddress, parameter, 0, out _);
         if (thread == 0)
         {
@@ -123,25 +143,7 @@ internal static unsafe class RemoteHookInjector
         parameterMayBeInUse = parameter != 0;
         try
         {
-            var milliseconds =
-                timeout == Timeout.InfiniteTimeSpan
-                    ? NativeMethods.Infinite
-                    : checked((uint)Math.Ceiling(timeout.TotalMilliseconds));
-            var waitResult = NativeMethods.WaitForSingleObject(thread, milliseconds);
-            if (waitResult == NativeMethods.WaitTimeout)
-            {
-                throw new TimeoutException($"等待远程操作 {operation} 超时");
-            }
-
-            if (waitResult != NativeMethods.WaitObject0)
-            {
-                if (waitResult == NativeMethods.WaitFailed)
-                {
-                    throw SuspendedGameProcess.NewWin32Exception($"等待远程操作 {operation} 失败");
-                }
-
-                throw new InvalidOperationException($"远程操作 {operation} 返回未知等待状态 0x{waitResult:X8}");
-            }
+            WaitForThread(thread, timeout, operation, cancellationToken);
 
             parameterMayBeInUse = false;
             if (!NativeMethods.GetExitCodeThread(thread, out var exitCode))
@@ -162,8 +164,56 @@ internal static unsafe class RemoteHookInjector
         }
     }
 
-    private static void LoadRemoteLibrary(nint process, nint remoteLoadLibrary, string libraryPath)
+    private static void WaitForThread(
+        nint thread,
+        TimeSpan timeout,
+        string operation,
+        CancellationToken cancellationToken
+    )
     {
+        var started = Stopwatch.GetTimestamp();
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var remaining = timeout == Timeout.InfiniteTimeSpan ? timeout : timeout - Stopwatch.GetElapsedTime(started);
+            var milliseconds =
+                timeout == Timeout.InfiniteTimeSpan
+                    ? 100u
+                    : (uint)Math.Clamp(Math.Ceiling(remaining.TotalMilliseconds), 0, 100);
+            var waitResult = NativeMethods.WaitForSingleObject(thread, milliseconds);
+            if (waitResult == NativeMethods.WaitObject0)
+            {
+                return;
+            }
+
+            if (waitResult == NativeMethods.WaitTimeout)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (timeout != Timeout.InfiniteTimeSpan && Stopwatch.GetElapsedTime(started) >= timeout)
+                {
+                    throw new TimeoutException($"等待远程操作 {operation} 超时");
+                }
+
+                continue;
+            }
+
+            if (waitResult == NativeMethods.WaitFailed)
+            {
+                throw SuspendedGameProcess.NewWin32Exception($"等待远程操作 {operation} 失败");
+            }
+
+            throw new InvalidOperationException($"远程操作 {operation} 返回未知等待状态 0x{waitResult:X8}");
+        }
+    }
+
+    private static void LoadRemoteLibrary(
+        nint process,
+        nint remoteLoadLibrary,
+        string libraryPath,
+        CancellationToken cancellationToken
+    )
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         var encodedPath = Encoding.Unicode.GetBytes(libraryPath + "\0");
         var remotePath = NativeMethods.VirtualAllocEx(
             process,
@@ -203,6 +253,7 @@ internal static unsafe class RemoteHookInjector
                 remotePath,
                 TimeSpan.FromSeconds(30),
                 LoadLibraryName,
+                cancellationToken,
                 out remotePathMayBeInUse
             );
             if (exitCode == 0)
@@ -226,12 +277,18 @@ internal static unsafe class RemoteHookInjector
         }
     }
 
-    private static nint FindRemoteModuleBase(int processId, string moduleName, TimeSpan timeout)
+    private static nint FindRemoteModuleBase(
+        int processId,
+        string moduleName,
+        TimeSpan timeout,
+        CancellationToken cancellationToken
+    )
     {
-        var deadline = DateTime.UtcNow + timeout;
+        var started = Stopwatch.GetTimestamp();
 
         do
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var result = TryFindRemoteModuleBase(processId, moduleName);
             if (result != 0)
             {
@@ -239,8 +296,9 @@ internal static unsafe class RemoteHookInjector
             }
 
             Thread.Sleep(25);
-        } while (DateTime.UtcNow < deadline);
+        } while (Stopwatch.GetElapsedTime(started) < timeout);
 
+        cancellationToken.ThrowIfCancellationRequested();
         throw new InvalidOperationException($"在游戏进程中找不到模块 {moduleName}");
     }
 

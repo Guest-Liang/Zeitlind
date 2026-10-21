@@ -1,22 +1,16 @@
 [CmdletBinding()]
 param(
     [ValidateSet("Debug", "Release")]
-    [string] $Configuration
+    [string] $Configuration,
+    [switch] $SkipHookBuild
 )
 
 $ErrorActionPreference = "Stop"
 
 $projectRoot = (Resolve-Path -LiteralPath $PSScriptRoot).Path
-$solutionPath = Join-Path $projectRoot "Zeitlind.slnx"
-$zzzHookProject = Join-Path $projectRoot "src\Zeitlind.Hook.Zzz\Zeitlind.Hook.Zzz.csproj"
-$hsrHookProject = Join-Path $projectRoot "src\Zeitlind.Hook.Hsr\Zeitlind.Hook.Hsr.csproj"
-$genshinHookProject = Join-Path $projectRoot "src\Zeitlind.Hook.Genshin\Zeitlind.Hook.Genshin.csproj"
+. (Join-Path $projectRoot 'tools\build-common.ps1')
 $appProject = Join-Path $projectRoot "src\Zeitlind.App\Zeitlind.App.csproj"
-$versionSourcePath = Join-Path $projectRoot "src\Zeitlind.Runtime\ApplicationBuildInfo.cs"
-$intermediateOutput = Join-Path $projectRoot "artifacts\intermediate"
-$zzzHookOutput = Join-Path $intermediateOutput "hook-zzz"
-$hsrHookOutput = Join-Path $intermediateOutput "hook-hsr"
-$genshinHookOutput = Join-Path $intermediateOutput "hook-ys"
+$intermediateOutput = Join-Path $projectRoot "artifacts\intermediate\cli"
 $appOutput = Join-Path $intermediateOutput "app"
 $preparedOutput = Join-Path $intermediateOutput "prepared"
 $buildOutput = Join-Path $projectRoot "artifacts\build"
@@ -28,190 +22,26 @@ $configurations =
         @("Release", "Debug")
     }
 
-function Reset-OutputDirectory {
-    param(
-        [Parameter(Mandatory)]
-        [string] $Path
-    )
-
-    $resolvedRoot = [System.IO.Path]::GetFullPath($projectRoot)
-    $resolvedPath = [System.IO.Path]::GetFullPath($Path)
-    $requiredPrefix = $resolvedRoot.TrimEnd(
-        [System.IO.Path]::DirectorySeparatorChar,
-        [System.IO.Path]::AltDirectorySeparatorChar) +
-        [System.IO.Path]::DirectorySeparatorChar
-
-    if (-not $resolvedPath.StartsWith(
-        $requiredPrefix,
-        [StringComparison]::OrdinalIgnoreCase))
-    {
-        throw "Refusing to clean an output directory outside '$resolvedRoot'."
-    }
-
-    if (Test-Path -LiteralPath $resolvedPath) {
-        Remove-Item -LiteralPath $resolvedPath -Recurse -Force
-    }
-
-    New-Item -ItemType Directory -Path $resolvedPath | Out-Null
-}
-
-function Read-ApplicationMetadata {
-    if (-not (Test-Path -LiteralPath $appProject -PathType Leaf)) {
-        throw "The application project was not found at '$appProject'."
-    }
-
-    [xml] $projectXml = Get-Content -LiteralPath $appProject -Raw
-    $propertyNames = @(
-        "AssemblyName"
-        "AssemblyTitle"
-        "Product"
-        "Company"
-        "Copyright"
-    )
-    $metadata = [ordered]@{}
-
-    foreach ($propertyName in $propertyNames) {
-        $propertyNodes = @(
-            $projectXml.SelectNodes("/Project/PropertyGroup/$propertyName")
-        )
-        if ($propertyNodes.Count -ne 1) {
-            throw "Expected exactly one $propertyName property in '$appProject'."
-        }
-
-        $propertyValue = $propertyNodes[0].InnerText
-        if ([string]::IsNullOrWhiteSpace($propertyValue)) {
-            throw "The $propertyName property in '$appProject' must not be empty."
-        }
-
-        $metadata[$propertyName] = $propertyValue
-    }
-
-    return [pscustomobject] $metadata
-}
-
-function Read-ApplicationVersion {
-    if (-not (Test-Path -LiteralPath $versionSourcePath -PathType Leaf)) {
-        throw "The application version source was not found at '$versionSourcePath'."
-    }
-
-    $source = Get-Content -LiteralPath $versionSourcePath -Raw
-    $versionMatches = [regex]::Matches(
-        $source,
-        'public\s+const\s+string\s+Version\s*=\s*"([^"]+)"\s*;'
-    )
-    if ($versionMatches.Count -ne 1) {
-        throw "Expected exactly one ApplicationBuildInfo.Version constant in '$versionSourcePath'."
-    }
-
-    $version = $versionMatches[0].Groups[1].Value
-    if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$') {
-        throw "Application version '$version' is not a supported semantic version."
-    }
-
-    return $version
-}
-
-function Assert-ExecutableMetadata {
-    param(
-        [Parameter(Mandatory)]
-        [string] $Path
-    )
-
-    $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($Path)
-    $expectedValues = [ordered]@{
-        FileDescription = $applicationMetadata.AssemblyTitle
-        FileVersion = $windowsFileVersion
-        ProductName = $applicationMetadata.Product
-        ProductVersion = $applicationVersion
-        CompanyName = $applicationMetadata.Company
-        LegalCopyright = $applicationMetadata.Copyright
-        OriginalFilename = "$($applicationMetadata.AssemblyName).exe"
-        InternalName = "$($applicationMetadata.AssemblyName).exe"
-    }
-
-    $mismatches = @(
-        foreach ($entry in $expectedValues.GetEnumerator()) {
-            $actualValue = $versionInfo.($entry.Key)
-            if (-not [string]::Equals(
-                $actualValue,
-                $entry.Value,
-                [StringComparison]::Ordinal))
-            {
-                "$($entry.Key): expected '$($entry.Value)', found '$actualValue'"
-            }
-        }
-    )
-    if ($mismatches.Count -ne 0) {
-        throw "Executable metadata validation failed for '$Path': $($mismatches -join '; ')."
-    }
-}
-
-$applicationMetadata = Read-ApplicationMetadata
-$applicationVersion = Read-ApplicationVersion
+$applicationMetadata = Read-ApplicationMetadata -ProjectPath $appProject
+$applicationVersion = Read-ApplicationVersion -ProjectRoot $projectRoot
 $windowsFileVersion = "$($applicationVersion -replace '-.*$', '').0"
 
-Reset-OutputDirectory -Path $intermediateOutput
-New-Item -ItemType Directory -Path $zzzHookOutput | Out-Null
-New-Item -ItemType Directory -Path $hsrHookOutput | Out-Null
-New-Item -ItemType Directory -Path $genshinHookOutput | Out-Null
+if (-not $SkipHookBuild) {
+    & (Join-Path $projectRoot 'build-hooks.ps1')
+}
+$hookPaths = Get-EmbeddedHookPaths -ProjectRoot $projectRoot
+
+Reset-OutputDirectory -ProjectRoot $projectRoot -Path $intermediateOutput
 New-Item -ItemType Directory -Path $appOutput | Out-Null
 New-Item -ItemType Directory -Path $preparedOutput | Out-Null
 
-& dotnet restore $solutionPath
+& dotnet restore $appProject
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet restore failed with exit code $LASTEXITCODE."
 }
 
-Write-Host "Building ZZZ Hook (Release)..."
-& dotnet publish $zzzHookProject `
-    --configuration Release `
-    --runtime win-x64 `
-    --self-contained true `
-    --no-restore `
-    --output $zzzHookOutput
-if ($LASTEXITCODE -ne 0) {
-    throw "Building the ZZZ Hook library failed with exit code $LASTEXITCODE."
-}
-
-$zzzHookBinary = Join-Path $zzzHookOutput "Zeitlind.Hook.Zzz.dll"
-if (-not (Test-Path -LiteralPath $zzzHookBinary -PathType Leaf)) {
-    throw "The ZZZ NativeAOT Hook library was not produced at '$zzzHookBinary'."
-}
-
-Write-Host "Building HSR Hook (Release)..."
-& dotnet publish $hsrHookProject `
-    --configuration Release `
-    --runtime win-x64 `
-    --self-contained true `
-    --no-restore `
-    --output $hsrHookOutput
-if ($LASTEXITCODE -ne 0) {
-    throw "Building the HSR Hook library failed with exit code $LASTEXITCODE."
-}
-
-$hsrHookBinary = Join-Path $hsrHookOutput "Zeitlind.Hook.Hsr.dll"
-if (-not (Test-Path -LiteralPath $hsrHookBinary -PathType Leaf)) {
-    throw "The HSR NativeAOT Hook library was not produced at '$hsrHookBinary'."
-}
-
-Write-Host "Building Genshin Hook (Release)..."
-& dotnet publish $genshinHookProject `
-    --configuration Release `
-    --runtime win-x64 `
-    --self-contained true `
-    --no-restore `
-    --output $genshinHookOutput
-if ($LASTEXITCODE -ne 0) {
-    throw "Building the Genshin Hook library failed with exit code $LASTEXITCODE."
-}
-
-$genshinHookBinary = Join-Path $genshinHookOutput "Zeitlind.Hook.Genshin.dll"
-if (-not (Test-Path -LiteralPath $genshinHookBinary -PathType Leaf)) {
-    throw "The Genshin NativeAOT Hook library was not produced at '$genshinHookBinary'."
-}
-
 foreach ($currentConfiguration in $configurations) {
-    Reset-OutputDirectory -Path $appOutput
+    Reset-OutputDirectory -ProjectRoot $projectRoot -Path $appOutput
     Write-Host "Building $currentConfiguration Host..."
 
     & dotnet publish $appProject `
@@ -220,9 +50,9 @@ foreach ($currentConfiguration in $configurations) {
         --self-contained true `
         --no-restore `
         --output $appOutput `
-        "-p:ZzzHookBinaryPath=$zzzHookBinary" `
-        "-p:HsrHookBinaryPath=$hsrHookBinary" `
-        "-p:GenshinHookBinaryPath=$genshinHookBinary" `
+        "-p:ZzzHookBinaryPath=$($hookPaths.Zzz)" `
+        "-p:HsrHookBinaryPath=$($hookPaths.Hsr)" `
+        "-p:GenshinHookBinaryPath=$($hookPaths.Genshin)" `
         "-p:RequireEmbeddedHook=true" `
         "-p:Version=$applicationVersion" `
         "-p:AssemblyVersion=$windowsFileVersion" `
@@ -246,7 +76,7 @@ foreach ($currentConfiguration in $configurations) {
     $assetName = "Zeitlind_v$($applicationVersion)_$($currentConfiguration)_cli.exe"
     $preparedAssetPath = Join-Path $preparedOutput $assetName
     Copy-Item -LiteralPath $appFiles[0].FullName -Destination $preparedAssetPath
-    Assert-ExecutableMetadata -Path $preparedAssetPath
+    Assert-ExecutableMetadata -Path $preparedAssetPath -Metadata $applicationMetadata -Version $applicationVersion
 }
 
 $expectedNames = @(
