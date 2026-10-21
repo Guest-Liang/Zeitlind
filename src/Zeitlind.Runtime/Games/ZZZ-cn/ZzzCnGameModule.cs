@@ -101,8 +101,8 @@ internal sealed class ZzzCnGameModule : IGameModule
     {
         private static readonly ZzzAchievementProtocolProfile Profile = new()
         {
-            FullSnapshotCommandId = 5883,
-            RecordFieldPath = "$.15.1067.10[]",
+            FullSnapshotCommandId = 7702,
+            RecordFieldPath = "$.10.829.2[]",
             IdFieldNumber = 1,
             FinishTimestampFieldNumber = 3,
             CompletedFlagFieldNumber = 4,
