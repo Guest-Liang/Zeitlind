@@ -25,12 +25,8 @@ jobs:
             label: ZZZ Liyin
             source: liyin
             repository: Ticca-Liyin/zzz.liyin.space
-            branch: main
+            updater: tools/update-zzz-metadata.py
             metadata_file: ZzzAchievementInfo.json
-            id_field: Id
-            minimum_count: 100
-            trim_version_whitespace: false
-            compare_mode: blob
           - game: hsr
             game_name: 崩坏：星穹铁道
             label: HSR Liyin
@@ -46,6 +42,7 @@ jobs:
             game_name: 原神
             label: Genshin Yae
             source: yae
+            updater: tools/update-genshin-metadata.py
             metadata_file: GenshinAchievementInfo.json
     concurrency:
       # 沿用原工作流的分组，同一游戏串行，不同游戏互不阻塞。
@@ -55,6 +52,7 @@ jobs:
       GAME_NAME: ${{ matrix.game_name }}
       CATALOG_LABEL: ${{ matrix.label }}
       SOURCE_KIND: ${{ matrix.source }}
+      UPDATER: ${{ matrix.updater }}
       UPSTREAM_REPOSITORY: ${{ matrix.repository }}
       UPSTREAM_BRANCH: ${{ matrix.branch }}
       UPSTREAM_PATH: src/jsons/AchievementInfo.json
@@ -71,6 +69,13 @@ jobs:
         with:
           ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
+
+      - name: Keep the default branch metadata updater
+        if: matrix.updater != ''
+        shell: bash
+        run: |
+          # An existing metadata PR may predate the current updater script.
+          cp -- "$UPDATER" "$RUNNER_TEMP/update-metadata.py"
 
       - name: Continue an existing update pull request
         shell: bash
@@ -130,8 +135,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ "$SOURCE_KIND" == "yae" ]]; then
-            python3 tools/update-genshin-metadata.py \
+          if [[ -n "$UPDATER" ]]; then
+            python3 "$RUNNER_TEMP/update-metadata.py" \
               --output "$METADATA_PATH" \
               --github-output "$GITHUB_OUTPUT" \
               --summary "$GITHUB_STEP_SUMMARY"
@@ -362,6 +367,7 @@ jobs:
           SOURCE_SHA256: ${{ steps.metadata.outputs.source_sha256 }}
           SOURCE_COMMIT: ${{ steps.metadata.outputs.source_commit }}
           SOURCE_BLOB: ${{ steps.metadata.outputs.source_blob }}
+          SOURCE_COMPARISON: ${{ steps.metadata.outputs.source_comparison }}
         run: |
           set -euo pipefail
 
@@ -381,6 +387,9 @@ jobs:
           - 修改：$MODIFIED_COUNT
           - 上游数据：[$SOURCE_URL]($SOURCE_URL)
           EOF
+            if [[ -n "$SOURCE_COMPARISON" ]]; then
+              echo "- 数据源比较：$SOURCE_COMPARISON"
+            fi
             if [[ -n "$SOURCE_COMMIT" ]]; then
               echo "- 上游提交：[$SOURCE_COMMIT](https://github.com/$UPSTREAM_REPOSITORY/commit/$SOURCE_COMMIT)"
               echo "- 上游 Git blob：\`$SOURCE_BLOB\`"

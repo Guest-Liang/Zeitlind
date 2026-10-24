@@ -133,11 +133,19 @@ GitHub Release 和 Actions artifact 同时包含三份独立 EXE：`Zeitlind_v<v
 
 ZZZ、星铁和原神共用 GitHub Actions 工作流 `Check Achievement Metadata`（`.github/workflows/update-metadata.yaml`），每天北京时间 10:17 通过矩阵分别检查三款游戏，也可在 Actions 页面手动运行。有变化时为对应游戏创建或更新独立 PR，供人工核对后合并；不会自动合并或发布。每款游戏沿用原来的更新分支，一款游戏检查失败不会取消其他游戏的检查。
 
+ZZZ 每次同时检查 [Liyin GitHub 目录](https://github.com/Ticca-Liyin/zzz.liyin.space/blob/main/src/jsons/AchievementInfo.json) 和[网站当前目录](https://zzz.liyin.space/jsons/AchievementInfo.json)，按目录内最高 `Version` 的数字大小选择较新的数据；版本相同时优先 GitHub。单个来源下载或校验失败时使用另一个有效来源；不会用低于本地版本的数据覆盖目录，也会拒绝条目数缩减超过 20% 的候选目录。两个来源都不可用时检查失败。Actions 摘要和 PR 会记录来源比较、所选 URL、SHA-256，以及适用的 GitHub commit/blob。网站旧路径 `/src/jsons/` 可能继续返回过期数据，因此使用 `/jsons/`。
+
 原神数据来自 Yae 的 [`schicksal/metadata`](https://rin.holohat.work/schicksal/metadata) Protobuf 接口，按上游 [`AchievementInfo.proto`](https://github.com/HolographicHat/Yae/blob/master/YaeAchievement/res/proto/AchievementInfo.proto) 转换为 `GenshinAchievementInfo.json`，只同步成就目录。`Version` 表示目录快照版本，不是各项成就的首次上线版本。
 
 本地可用 Python 3 运行，无需额外依赖：
 
 ```powershell
+# 比较 ZZZ 两个来源，只检查差异
+python tools/update-zzz-metadata.py --check
+
+# 获取、校验并更新 ZZZ 本地目录
+python tools/update-zzz-metadata.py
+
 # 只检查差异
 python tools/update-genshin-metadata.py --check
 
