@@ -170,13 +170,13 @@ internal sealed class GiCnGameModule : IGameModule
     {
         private static readonly GenshinAchievementProtocolProfile Profile = new()
         {
-            FullSnapshotCommandId = 24317,
-            RecordFieldPath = "$.6[]",
-            IdFieldNumber = 11,
-            StatusFieldNumber = 3,
-            FinishTimestampFieldNumber = 14,
-            ProgressFieldNumber = 12,
-            TotalProgressFieldNumber = 10,
+            FullSnapshotCommandId = 4164,
+            RecordFieldPath = "$.9[]",
+            IdFieldNumber = 9,
+            StatusFieldNumber = 7,
+            FinishTimestampFieldNumber = 4,
+            ProgressFieldNumber = 6,
+            TotalProgressFieldNumber = 8,
             PackedVarintFieldNumbers = [],
         };
 
