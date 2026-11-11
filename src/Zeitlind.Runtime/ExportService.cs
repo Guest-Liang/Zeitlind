@@ -60,8 +60,7 @@ internal static class ExportService
             throw new InvalidOperationException("请以管理员身份运行 Zeitlind");
         }
 
-        using var extractedHook =
-            EmbeddedHook.TryExtract(selection.Module)
+        using var extractedHook = EmbeddedHook.TryExtract(selection.Module)
             ?? throw new InvalidOperationException(
                 $"当前构建没有内嵌 {selection.Module.Descriptor.DisplayName} Hook DLL；请使用完整 Zeitlind"
             );

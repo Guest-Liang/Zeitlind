@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using Zeitlind.Runtime;
@@ -7,12 +8,15 @@ namespace Zeitlind.Desktop;
 
 public partial class App : Application
 {
+    internal static string ExecutableDirectory { get; } =
+        Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
+
     private ApplicationLog? _log;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         ApplicationLog.ConsoleEnabled = false;
-        _log = ApplicationLog.TryStart();
+        _log = ApplicationLog.TryStart(ExecutableDirectory);
         DispatcherUnhandledException += OnUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
         {

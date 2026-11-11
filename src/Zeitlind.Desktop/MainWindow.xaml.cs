@@ -102,8 +102,7 @@ public partial class MainWindow : Window
                 Multiselect = false,
                 DereferenceLinks = true,
             };
-            var initialPath =
-                _manualExecutable
+            var initialPath = _manualExecutable
                 ?? (GamesList.ItemsSource as GameCard[])
                     ?.FirstOrDefault(static card => card.IsAvailable)
                     ?.ExecutablePath;
@@ -211,7 +210,7 @@ public partial class MainWindow : Window
         SetStatus("正在保存", "正在写入成就文件…");
         try
         {
-            var directory = Path.Combine(AppContext.BaseDirectory, "Exports");
+            var directory = Path.Combine(App.ExecutableDirectory, "Exports");
             var result = await Task.Run(() => capture.SaveAsync(option.Target, directory, cancellation.Token));
             _resultDirectory = Path.GetDirectoryName(result.Path);
             OpenResultButton.Visibility = Visibility.Visible;

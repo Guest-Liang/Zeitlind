@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net11.0-windows</TargetFramework>
     <AssemblyName>Zeitlind.Hook.Hsr</AssemblyName>
     <RootNamespace>Zeitlind.Hook.Hsr</RootNamespace>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

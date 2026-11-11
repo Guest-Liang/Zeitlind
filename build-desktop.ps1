@@ -27,7 +27,7 @@ $intermediate = Join-Path $projectRoot "artifacts\intermediate"
 $staging = Join-Path $intermediate "desktop-$Configuration"
 Reset-OutputDirectory -ProjectRoot $projectRoot -Path $staging
 
-Write-Host "Publishing WPF .NET 10 self-contained single EXE ($Configuration)..."
+Write-Host "Publishing WPF self-contained single EXE ($Configuration)..."
 & dotnet publish $desktopProject `
     --configuration $Configuration `
     --runtime win-x64 `

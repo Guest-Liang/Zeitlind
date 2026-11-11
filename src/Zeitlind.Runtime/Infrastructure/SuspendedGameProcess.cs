@@ -36,8 +36,8 @@ internal sealed class SuspendedGameProcess : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
 
         var fullPath = Path.GetFullPath(executablePath);
-        var workingDirectory =
-            Path.GetDirectoryName(fullPath) ?? throw new InvalidOperationException("无法确定游戏工作目录");
+        var workingDirectory = Path.GetDirectoryName(fullPath)
+            ?? throw new InvalidOperationException("无法确定游戏工作目录");
         var commandLine = $"\"{fullPath}\"".ToCharArray();
         Array.Resize(ref commandLine, commandLine.Length + 1);
 

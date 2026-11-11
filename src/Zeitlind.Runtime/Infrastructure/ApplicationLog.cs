@@ -43,11 +43,12 @@ internal sealed class ApplicationLog : IDisposable
         }
     }
 
-    public static ApplicationLog? TryStart()
+    public static ApplicationLog? TryStart(string? directory = null)
     {
+        var programDirectory = directory ?? AppContext.BaseDirectory;
         var localDate = DateTimeOffset.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         var fileName = $"Zeitlind-{localDate}.log";
-        var filePath = Path.Combine(AppContext.BaseDirectory, fileName);
+        var filePath = Path.Combine(programDirectory, fileName);
         FileStream? stream = null;
         LogSink? sink = null;
 
@@ -60,7 +61,7 @@ internal sealed class ApplicationLog : IDisposable
             };
             sink = new LogSink(writer);
             var log = new ApplicationLog(filePath, sink);
-            log.WriteSessionHeader();
+            log.WriteSessionHeader(programDirectory);
 
             lock (CurrentGate)
             {
@@ -161,7 +162,7 @@ internal sealed class ApplicationLog : IDisposable
         Write(level, $"{context}{Environment.NewLine}{exception}", false, false);
     }
 
-    private void WriteSessionHeader()
+    private void WriteSessionHeader(string programDirectory)
     {
         var localNow = DateTimeOffset.Now;
         var localTimeZone = TimeZoneInfo.Local;
@@ -176,7 +177,7 @@ internal sealed class ApplicationLog : IDisposable
             $"软件版本：{ApplicationBuildInfo.Version}；构建配置：{ApplicationBuildInfo.Configuration}"
         );
         _sink.Write(ApplicationLogLevel.Info, $"可执行文件：{Environment.ProcessPath ?? "unknown"}");
-        _sink.Write(ApplicationLogLevel.Info, $"程序目录：{AppContext.BaseDirectory}");
+        _sink.Write(ApplicationLogLevel.Info, $"程序目录：{programDirectory}");
         _sink.Write(ApplicationLogLevel.Info, $"当前工作目录：{Environment.CurrentDirectory}");
         _sink.Write(
             ApplicationLogLevel.Info,

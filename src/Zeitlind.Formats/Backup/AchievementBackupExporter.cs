@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Zeitlind.Core.Achievements;
@@ -32,7 +31,7 @@ public static class AchievementBackupExporter
                 CompletedFlagFieldNumber = snapshot.CompletedFlagFieldNumber,
                 ProgressFieldNumber = snapshot.ProgressFieldNumber,
                 TotalProgressFieldNumber = snapshot.TotalProgressFieldNumber,
-                PackedVarintFieldNumbers = snapshot.PackedVarintFieldNumbers.ToArray(),
+                PackedVarintFieldNumbers = snapshot.PackedVarintFieldNumbers,
                 CatalogMatchCount = snapshot.CatalogMatchCount,
                 UnknownIdCount = snapshot.UnknownIdCount,
             },
@@ -56,17 +55,8 @@ public static class AchievementBackupExporter
                 .Normalize(record.FinishTimestamp)
                 ?.ToOffset(AchievementTimestamp.ChinaStandardOffset),
             CompletedFlag = record.CompletedFlag,
-            RawVarints = record.RawVarints.ToDictionary(
-                static pair => pair.Key.ToString(CultureInfo.InvariantCulture),
-                static pair => pair.Value
-            ),
-            RawPackedVarints =
-                record.RawPackedVarints.Count == 0
-                    ? null
-                    : record.RawPackedVarints.ToDictionary(
-                        static pair => pair.Key.ToString(CultureInfo.InvariantCulture),
-                        static pair => pair.Value.ToArray()
-                    ),
+            RawVarints = record.RawVarints,
+            RawPackedVarints = record.RawPackedVarints.Count == 0 ? null : record.RawPackedVarints,
         };
     }
 }
@@ -139,7 +129,7 @@ internal sealed class DetectionInfo
     public uint? TotalProgressFieldNumber { get; init; }
 
     [JsonPropertyName("packed_varint_field_numbers")]
-    public required uint[] PackedVarintFieldNumbers { get; init; }
+    public required IReadOnlyList<uint> PackedVarintFieldNumbers { get; init; }
 
     [JsonPropertyName("catalog_match_count")]
     public required int CatalogMatchCount { get; init; }
@@ -179,11 +169,11 @@ internal sealed class AchievementBackupRecord
     public bool? CompletedFlag { get; init; }
 
     [JsonPropertyName("raw_varints")]
-    public required Dictionary<string, ulong> RawVarints { get; init; }
+    public required IReadOnlyDictionary<uint, ulong> RawVarints { get; init; }
 
     [JsonPropertyName("raw_packed_varints")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public Dictionary<string, ulong[]>? RawPackedVarints { get; init; }
+    public IReadOnlyDictionary<uint, ulong[]>? RawPackedVarints { get; init; }
 }
 
 [JsonSourceGenerationOptions(WriteIndented = true)]

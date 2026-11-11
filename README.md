@@ -1,6 +1,6 @@
 # Zeitlind
 
-Zeitlind 是 Windows x64 下的游戏成就导出工具
+Zeitlind 是 Windows x64 下的游戏成就导出工具。运行所需 CPU 基线为 x86-64-v2，包括 SSE4.2 和 POPCNT。 [.NET 11 硬件要求](https://learn.microsoft.com/en-us/dotnet/core/compatibility/jit/11/minimum-hardware-requirements)
 
 ~~已通过AI Slop认证~~
 <p align="center">
@@ -25,9 +25,9 @@ Zeitlind 是 Windows x64 下的游戏成就导出工具
 
 ## 使用方法
 
-### GUI（WPF / .NET 10）
+### GUI（WPF / .NET 11）
 
-GUI为 Windows x64 自包含单文件 `Zeitlind_v<version>_Release_desktop.exe`。无需安装，也无需预装 .NET 或 Windows App SDK。
+GUI 为 Windows x64 自包含单文件 `Zeitlind_v<version>_Release_desktop.exe`。首次启动时会将 WPF 依赖解压到本机临时缓存。无需安装，也无需预装 .NET 或 Windows App SDK。
 
 1. 完全退出需要导出的游戏，双击 GUI EXE，允许启动时的 Windows 管理员权限请求。
 2. 在游戏列表中点击“导出成就”。列表显示注册表检测到的绝区零、崩坏：星穹铁道和原神国服，可点击“刷新列表”重新检测。状态区会分别提示检测数量、未检测到安装、路径无效和读取失败；具体原因显示在对应游戏卡片中。
@@ -87,7 +87,7 @@ Zeitlind.exe --version
 
 ## 从源码构建
 
-开发需要 `global.json` 指定的 .NET 10 SDK，以及 Visual Studio 的 C++ 桌面开发工具链和 Windows SDK（用于构建原生 Hook）。
+从源码构建需要 `global.json` 指定的 .NET 11 SDK。构建原生 Hook 还需要 Visual Studio 的 C++ 桌面开发工具链和 Windows SDK。
 
 ```powershell
 # 单独发布 Desktop 单 EXE，先构建三个原生 Hook

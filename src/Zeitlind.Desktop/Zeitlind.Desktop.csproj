@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net11.0-windows</TargetFramework>
     <OutputType>WinExe</OutputType>
     <UseWPF>true</UseWPF>
     <AssemblyName>Zeitlind.Desktop</AssemblyName>
@@ -15,7 +15,9 @@
     <PlatformTarget>x64</PlatformTarget>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- .NET 11 WPF mixed-mode assemblies need to load from disk. See dotnet/wpf#11842. -->
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <NoWarn>$(NoWarn);NETSDK1244</NoWarn>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <PublishAot>false</PublishAot>
     <PublishTrimmed>false</PublishTrimmed>

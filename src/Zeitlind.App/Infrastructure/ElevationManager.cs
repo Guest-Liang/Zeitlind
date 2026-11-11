@@ -20,8 +20,8 @@ internal static class ElevationManager
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(gameExecutablePath);
 
-        var executablePath =
-            Environment.ProcessPath ?? throw new InvalidOperationException("无法确定 Zeitlind 可执行文件路径");
+        var executablePath = Environment.ProcessPath
+            ?? throw new InvalidOperationException("无法确定 Zeitlind 可执行文件路径");
         var startInfo = new ProcessStartInfo
         {
             FileName = executablePath,
@@ -52,8 +52,8 @@ internal static class ElevationManager
 
         try
         {
-            using var process =
-                Process.Start(startInfo) ?? throw new InvalidOperationException("Windows 没有启动管理员权限实例");
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Windows 没有启动管理员权限实例");
             ApplicationLog.WriteDebug($"管理员权限实例已创建：PID {process.Id}", writeToConsole: false);
         }
         catch (Win32Exception exception) when (exception.NativeErrorCode == OperationCanceledError)

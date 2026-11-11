@@ -28,21 +28,21 @@ public sealed record AchievementCatalog
             _ => throw new ArgumentOutOfRangeException(nameof(game), game, "未知游戏"),
         };
         var assembly = typeof(AchievementCatalog).Assembly;
-        using var stream =
-            assembly.GetManifestResourceStream(resourceName)
+        using var stream = assembly.GetManifestResourceStream(resourceName)
             ?? throw new InvalidOperationException($"缺少内嵌成就元数据资源：{resourceName}");
         using var document = JsonDocument.Parse(stream);
+        var root = document.RootElement;
 
-        if (document.RootElement.ValueKind != JsonValueKind.Object)
+        if (root.ValueKind != JsonValueKind.Object)
         {
             throw new InvalidDataException($"{game} AchievementInfo.json 的根节点不是对象");
         }
 
-        var ids = new HashSet<uint>();
+        HashSet<uint> ids = [with(capacity: root.GetPropertyCount())];
         Version? latestVersion = null;
         var latestVersionText = "unknown";
 
-        foreach (var property in document.RootElement.EnumerateObject())
+        foreach (var property in root.EnumerateObject())
         {
             if (!uint.TryParse(property.Name, NumberStyles.None, CultureInfo.InvariantCulture, out var id))
             {
