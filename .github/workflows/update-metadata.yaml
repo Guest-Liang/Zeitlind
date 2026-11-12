@@ -25,19 +25,15 @@ jobs:
             label: ZZZ Liyin
             source: liyin
             repository: Ticca-Liyin/zzz.liyin.space
-            updater: tools/update-zzz-metadata.py
+            updater: tools/update-liyin-metadata.py
             metadata_file: ZzzAchievementInfo.json
           - game: hsr
             game_name: 崩坏：星穹铁道
             label: HSR Liyin
             source: liyin
             repository: Ticca-Liyin/liyin.space
-            branch: master
+            updater: tools/update-liyin-metadata.py
             metadata_file: HsrAchievementInfo.json
-            id_field: AchievementID
-            minimum_count: 1000
-            trim_version_whitespace: true
-            compare_mode: json
           - game: genshin
             game_name: 原神
             label: Genshin Yae
@@ -49,19 +45,14 @@ jobs:
       group: update-${{ matrix.game }}-${{ matrix.source }}-achievement-metadata
       cancel-in-progress: false
     env:
+      METADATA_GAME: ${{ matrix.game }}
       GAME_NAME: ${{ matrix.game_name }}
       CATALOG_LABEL: ${{ matrix.label }}
       SOURCE_KIND: ${{ matrix.source }}
       UPDATER: ${{ matrix.updater }}
       UPSTREAM_REPOSITORY: ${{ matrix.repository }}
-      UPSTREAM_BRANCH: ${{ matrix.branch }}
-      UPSTREAM_PATH: src/jsons/AchievementInfo.json
       METADATA_PATH: src/Zeitlind.Protocol/Metadata/${{ matrix.metadata_file }}
       UPDATE_BRANCH: automation/update-${{ matrix.game }}-${{ matrix.source }}-achievement-metadata
-      ID_FIELD: ${{ matrix.id_field }}
-      MINIMUM_COUNT: ${{ matrix.minimum_count }}
-      TRIM_VERSION_WHITESPACE: ${{ matrix.trim_version_whitespace }}
-      COMPARE_MODE: ${{ matrix.compare_mode }}
 
     steps:
       - name: Checkout default branch
@@ -71,7 +62,6 @@ jobs:
           fetch-depth: 0
 
       - name: Keep the default branch metadata updater
-        if: matrix.updater != ''
         shell: bash
         run: |
           # An existing metadata PR may predate the current updater script.
@@ -135,187 +125,15 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ -n "$UPDATER" ]]; then
-            python3 "$RUNNER_TEMP/update-metadata.py" \
-              --output "$METADATA_PATH" \
-              --github-output "$GITHUB_OUTPUT" \
-              --summary "$GITHUB_STEP_SUMMARY"
-            exit 0
+          args=(
+            --output "$METADATA_PATH"
+            --github-output "$GITHUB_OUTPUT"
+            --summary "$GITHUB_STEP_SUMMARY"
+          )
+          if [[ "$SOURCE_KIND" == "liyin" ]]; then
+            args+=(--game "$METADATA_GAME")
           fi
-
-          candidate="$RUNNER_TEMP/AchievementInfo.json"
-          content_json="$(
-            gh api \
-              "repos/$UPSTREAM_REPOSITORY/contents/$UPSTREAM_PATH?ref=$UPSTREAM_BRANCH"
-          )"
-          download_url="$(jq -r '.download_url' <<< "$content_json")"
-          upstream_blob="$(jq -r '.sha' <<< "$content_json")"
-          upstream_size="$(jq -r '.size' <<< "$content_json")"
-          source_commit="$(
-            gh api \
-              "repos/$UPSTREAM_REPOSITORY/commits?path=$UPSTREAM_PATH&sha=$UPSTREAM_BRANCH&per_page=1" \
-              --jq '.[0].sha'
-          )"
-
-          if [[ ! "$source_commit" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "Invalid upstream commit: $source_commit" >&2
-            exit 1
-          fi
-          if [[ ! "$upstream_blob" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "Invalid upstream Git blob: $upstream_blob" >&2
-            exit 1
-          fi
-          if [[ "$download_url" != \
-              "https://raw.githubusercontent.com/$UPSTREAM_REPOSITORY/"* ]]; then
-            echo "Unexpected upstream download URL: $download_url" >&2
-            exit 1
-          fi
-          if (( upstream_size <= 0 || upstream_size > 4194304 )); then
-            echo "Unexpected upstream size: $upstream_size bytes" >&2
-            exit 1
-          fi
-
-          curl \
-            --fail \
-            --location \
-            --silent \
-            --show-error \
-            --retry 2 \
-            --retry-all-errors \
-            --connect-timeout 10 \
-            --max-time 45 \
-            --output "$candidate" \
-            "$download_url"
-
-          downloaded_size="$(wc -c < "$candidate")"
-          if [[ "$downloaded_size" -ne "$upstream_size" ]]; then
-            echo "Downloaded $downloaded_size bytes; GitHub reported $upstream_size." >&2
-            exit 1
-          fi
-
-          downloaded_blob="$(git hash-object --no-filters "$candidate")"
-          if [[ "$downloaded_blob" != "$upstream_blob" ]]; then
-            echo "Downloaded Git blob $downloaded_blob does not match $upstream_blob." >&2
-            exit 1
-          fi
-
-          validate_filter='
-            type == "object" and
-            length >= $minimum_count and
-            all(
-              to_entries[];
-              (.key | test("^[0-9]{7}$")) and
-              (.value | type == "object") and
-              (.value[$id_field] | type == "number") and
-              ((.value[$id_field] | tostring) == .key) and
-              (.value.Version | type == "string") and
-              (.value.Version | if $trim_version then gsub("^\\s+|\\s+$"; "") else . end | test("^[0-9]+(\\.[0-9]+){1,2}$"))
-            )
-          '
-          for metadata_file in "$METADATA_PATH" "$candidate"; do
-            jq --exit-status \
-              --arg id_field "$ID_FIELD" \
-              --argjson minimum_count "$MINIMUM_COUNT" \
-              --argjson trim_version "$TRIM_VERSION_WHITESPACE" \
-              "$validate_filter" "$metadata_file" > /dev/null
-          done
-
-          old_count="$(jq 'length' "$METADATA_PATH")"
-          new_count="$(jq 'length' "$candidate")"
-          if (( new_count * 10 < old_count * 8 )); then
-            echo "Catalog shrank from $old_count to $new_count; refusing automatic update." >&2
-            exit 1
-          fi
-
-          version_filter='
-            [.[].Version | gsub("^\\s+|\\s+$"; "")]
-            | unique
-            | sort_by(split(".") | map(tonumber))
-            | last
-          '
-          old_version="$(jq -r "$version_filter" "$METADATA_PATH")"
-          new_version="$(jq -r "$version_filter" "$candidate")"
-          added_count="$(
-            jq \
-              --null-input \
-              --slurpfile old "$METADATA_PATH" \
-              --slurpfile new "$candidate" \
-              '($new[0] | keys) - ($old[0] | keys) | length'
-          )"
-          removed_count="$(
-            jq \
-              --null-input \
-              --slurpfile old "$METADATA_PATH" \
-              --slurpfile new "$candidate" \
-              '($old[0] | keys) - ($new[0] | keys) | length'
-          )"
-          modified_count="$(
-            jq \
-              --null-input \
-              --slurpfile old "$METADATA_PATH" \
-              --slurpfile new "$candidate" \
-              '[
-                ($new[0] | keys[]) as $key
-                | select(
-                    ($old[0] | has($key)) and
-                    ($new[0][$key] != $old[0][$key])
-                  )
-              ] | length'
-          )"
-
-          if [[ "$COMPARE_MODE" == "blob" ]]; then
-            current_blob="$(git hash-object --no-filters "$METADATA_PATH")"
-            if [[ "$current_blob" == "$downloaded_blob" ]]; then
-              changed=false
-            else
-              changed=true
-            fi
-          elif jq \
-            --exit-status \
-            --null-input \
-            --slurpfile current "$METADATA_PATH" \
-            --slurpfile candidate "$candidate" \
-            '$current[0] == $candidate[0]' > /dev/null; then
-            changed=false
-          else
-            changed=true
-          fi
-          if [[ "$changed" == true ]]; then
-            cp "$candidate" "$METADATA_PATH"
-          fi
-
-          {
-            echo "changed=$changed"
-            echo "old_count=$old_count"
-            echo "new_count=$new_count"
-            echo "old_version=$old_version"
-            echo "new_version=$new_version"
-            echo "added_count=$added_count"
-            echo "removed_count=$removed_count"
-            echo "modified_count=$modified_count"
-            echo "source_url=https://github.com/$UPSTREAM_REPOSITORY/blob/$source_commit/$UPSTREAM_PATH"
-            echo "source_commit=$source_commit"
-            echo "source_blob=$downloaded_blob"
-          } >> "$GITHUB_OUTPUT"
-
-          if [[ "$changed" == true ]]; then
-            heading="$CATALOG_LABEL achievement metadata update found"
-          else
-            heading="$CATALOG_LABEL achievement metadata is current"
-          fi
-          {
-            echo "## $heading"
-            echo
-            echo "| Metric | Old | New |"
-            echo "|---|---:|---:|"
-            echo "| Latest version | $old_version | $new_version |"
-            echo "| Entries | $old_count | $new_count |"
-            echo
-            echo "- Added: $added_count"
-            echo "- Removed: $removed_count"
-            echo "- Modified: $modified_count"
-            echo "- Upstream commit: \`$source_commit\`"
-          } >> "$GITHUB_STEP_SUMMARY"
+          python3 "$RUNNER_TEMP/update-metadata.py" "${args[@]}"
 
       - name: Commit and push metadata update
         if: steps.metadata.outputs.changed == 'true'
