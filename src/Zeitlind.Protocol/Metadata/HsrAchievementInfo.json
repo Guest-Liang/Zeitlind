@@ -2666,6 +2666,102 @@
     "Rarity": "Mid",
     "Version": "4.6"
   },
+  "4035701": {
+    "AchievementID": 4035701,
+    "SeriesID": 3,
+    "AchievementTitle": "敬献奥博洛斯的甜点",
+    "AchievementDesc": "味道不错…只是不够塞牙缝的。<br><div style=\"color:#8790abff;\">※登上阿哈的点星船</div>",
+    "ParamList": [],
+    "Priority": 8227,
+    "Rarity": "Mid",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4035702": {
+    "AchievementID": 4035702,
+    "SeriesID": 3,
+    "AchievementTitle": "垂钓群星之物",
+    "AchievementDesc": "给我一根钓竿，我能用它钓起「贪饕」。<br><div style=\"color:#8790abff;\">※为点星船搭起钓竿</div>",
+    "ParamList": [],
+    "Priority": 8226,
+    "Rarity": "Mid",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4035703": {
+    "AchievementID": 4035703,
+    "SeriesID": 3,
+    "AchievementTitle": "欢愉的海市蜃楼",
+    "AchievementDesc": "人生无法拥有幸福，只能拥有对幸福如海市蜃楼般的一瞥。<br><div style=\"color:#8790abff;\">※踏入「瞬息欢愉」</div>",
+    "ParamList": [],
+    "Priority": 8225,
+    "Rarity": "Mid",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4035704": {
+    "AchievementID": 4035704,
+    "SeriesID": 3,
+    "AchievementTitle": "树与海",
+    "AchievementDesc": "祂与祂，曾抵此处。<br><div style=\"color:#8790abff;\">※跟随阿哈见证属于阿基维利的一站</div>",
+    "ParamList": [],
+    "Priority": 8224,
+    "Rarity": "Mid",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4035705": {
+    "AchievementID": 4035705,
+    "SeriesID": 3,
+    "AchievementTitle": "暂时休刊",
+    "AchievementDesc": "因不可抗力，作者与故事人物均外出取材中…<br><div style=\"color:#8790abff;\">※返回二相乐园，与众人作别</div>",
+    "ParamList": [],
+    "Priority": 8223,
+    "Rarity": "Mid",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4035706": {
+    "AchievementID": 4035706,
+    "SeriesID": 3,
+    "AchievementTitle": "那片黄金中有如许孤独",
+    "AchievementDesc": "尽管守夜的人们已用古老的欢愉将她填满…<br><div style=\"color:#8790abff;\">※那已不是先人所望见的月亮</div>",
+    "ParamList": [],
+    "Priority": 8222,
+    "Rarity": "Mid",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4035707": {
+    "AchievementID": 4035707,
+    "SeriesID": 3,
+    "AchievementTitle": "致以欢笑的人",
+    "AchievementDesc": "完成瞬息欢愉的「Jump时刻」，你们的演出值得一场盛大的谢幕",
+    "ParamList": [],
+    "Priority": 8221,
+    "Rarity": "High",
+    "Version": "4.7"
+  },
+  "4035708": {
+    "AchievementID": 4035708,
+    "SeriesID": 3,
+    "AchievementTitle": "浣熊球",
+    "AchievementDesc": "启动旋转小蛋糕，为点星船加足马力",
+    "ParamList": [],
+    "Priority": 8220,
+    "Rarity": "Mid",
+    "Version": "4.7"
+  },
+  "4035709": {
+    "AchievementID": 4035709,
+    "SeriesID": 3,
+    "AchievementTitle": "点心向前冲！",
+    "AchievementDesc": "点星船，启动！全速前进！",
+    "ParamList": [],
+    "Priority": 8219,
+    "Rarity": "Mid",
+    "Version": "4.7"
+  },
   "4040101": {
     "AchievementID": 4040101,
     "SeriesID": 4,
@@ -6955,6 +7051,185 @@
     "Priority": 6370,
     "Rarity": "Low",
     "Version": "4.6"
+  },
+  "4045701": {
+    "AchievementID": 4045701,
+    "SeriesID": 4,
+    "AchievementTitle": "金色传说的崇高客体",
+    "AchievementDesc": "集齐《星轨之兔》的奖励卡片<br><div style=\"color:#8790abff;\">※「明月装饰了你的窗子，你装饰了别人的梦。」</div>",
+    "ParamList": [],
+    "Priority": 6337,
+    "Rarity": "Low",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4045702": {
+    "AchievementID": 4045702,
+    "SeriesID": 4,
+    "AchievementTitle": "幻想尘灵传",
+    "AchievementDesc": "在二相乐园和千星城累计召集220个无名尘灵<br><div style=\"color:#8790abff;\">※「词句已成血肉。」</div>",
+    "ParamList": [
+      {
+        "Value": 220
+      }
+    ],
+    "Priority": 6336,
+    "Rarity": "Low",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4045703": {
+    "AchievementID": 4045703,
+    "SeriesID": 4,
+    "AchievementTitle": "全明星阵容解锁",
+    "AchievementDesc": "在瞬息欢愉的「Jump时刻」中，触碰演职员表中所有的名字",
+    "ParamList": [],
+    "Priority": 6335,
+    "Rarity": "Low",
+    "Version": "4.7"
+  },
+  "4045704": {
+    "AchievementID": 4045704,
+    "SeriesID": 4,
+    "AchievementTitle": "星星的轨道如命运的缠结",
+    "AchievementDesc": "你，要来点晕车药吗？",
+    "ParamList": [],
+    "Priority": 6334,
+    "Rarity": "Low",
+    "Version": "4.7"
+  },
+  "4045705": {
+    "AchievementID": 4045705,
+    "SeriesID": 4,
+    "AchievementTitle": "脸上的门，口中的灯",
+    "AchievementDesc": "打开秘密房间的灯和隐藏通道",
+    "ParamList": [],
+    "Priority": 6333,
+    "Rarity": "Low",
+    "Version": "4.7"
+  },
+  "4045706": {
+    "AchievementID": 4045706,
+    "SeriesID": 4,
+    "AchievementTitle": "水下八关",
+    "AchievementDesc": "从点星船外围前往水下，找到前往搁浅风帆船的路",
+    "ParamList": [],
+    "Priority": 6332,
+    "Rarity": "Low",
+    "Version": "4.7"
+  },
+  "4045707": {
+    "AchievementID": 4045707,
+    "SeriesID": 4,
+    "AchievementTitle": "一二级准备，放！",
+    "AchievementDesc": "把自己从点星船上发射出去<br><div style=\"color:#8790abff;\">※球笼车可真是个伟大的发明</div>",
+    "ParamList": [],
+    "Priority": 6331,
+    "Rarity": "Low",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4045708": {
+    "AchievementID": 4045708,
+    "SeriesID": 4,
+    "AchievementTitle": "蛋糕不是个谎言",
+    "AchievementDesc": "在点星船演奏奇异乐章，找到一块「特别的点心」",
+    "ParamList": [],
+    "Priority": 6330,
+    "Rarity": "Low",
+    "Version": "4.7"
+  },
+  "4045709": {
+    "AchievementID": 4045709,
+    "SeriesID": 4,
+    "AchievementTitle": "One Piece of cake",
+    "AchievementDesc": "完成点星船周遭风帆船的大秘宝挑战<br><div style=\"color:#8790abff;\">※当你凝视欢愉时，你和欢愉都笑得很开心</div>",
+    "ParamList": [],
+    "Priority": 6329,
+    "Rarity": "Low",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4045712": {
+    "AchievementID": 4045712,
+    "SeriesID": 4,
+    "AchievementTitle": "乐园变奏：青蛙王子",
+    "AchievementDesc": "演奏奇异乐章，找到藏在点星船的迷之生物",
+    "ParamList": [],
+    "Priority": 6328,
+    "Rarity": "Low",
+    "Version": "4.7"
+  },
+  "4045713": {
+    "AchievementID": 4045713,
+    "SeriesID": 4,
+    "AchievementTitle": "乐园变奏：兔子洞",
+    "AchievementDesc": "演奏奇异乐章，找到藏在瞬息欢愉的迷之生物",
+    "ParamList": [],
+    "Priority": 6327,
+    "Rarity": "Low",
+    "Version": "4.7"
+  },
+  "4045714": {
+    "AchievementID": 4045714,
+    "SeriesID": 4,
+    "AchievementTitle": "献给肮脏与美丽的合唱",
+    "AchievementDesc": "在点星船和瞬息欢愉完成《浮脂记事》的所有玩法内容<br><div style=\"color:#8790abff;\">※「我的宝藏并不在幻想世界，不是吗？」</div>",
+    "ParamList": [],
+    "Priority": 6326,
+    "Rarity": "Low",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4045715": {
+    "AchievementID": 4045715,
+    "SeriesID": 4,
+    "AchievementTitle": "偶像破坏运动",
+    "AchievementDesc": "数次攻击伟大的乐子神的立牌，哎，阿哈真没面子",
+    "ParamList": [],
+    "Priority": 6325,
+    "Rarity": "Low",
+    "Version": "4.7"
+  },
+  "4045716": {
+    "AchievementID": 4045716,
+    "SeriesID": 4,
+    "AchievementTitle": "在世界尽头尽情Jump",
+    "AchievementDesc": "完成瞬息欢愉所有的「二次元JUMP！」",
+    "ParamList": [],
+    "Priority": 6324,
+    "Rarity": "Low",
+    "Version": "4.7"
+  },
+  "4045717": {
+    "AchievementID": 4045717,
+    "SeriesID": 4,
+    "AchievementTitle": "乐园变奏：柳林风声",
+    "AchievementDesc": "在找到所有的迷之生物后，和奇怪的尘灵灵见面",
+    "ParamList": [],
+    "Priority": 6323,
+    "Rarity": "Mid",
+    "Version": "4.7"
+  },
+  "4045718": {
+    "AchievementID": 4045718,
+    "SeriesID": 4,
+    "AchievementTitle": "寻找红心女王",
+    "AchievementDesc": "在点星船「二次元JUMP！」的猜牌游戏中，选中正确的卡牌",
+    "ParamList": [],
+    "Priority": 6322,
+    "Rarity": "Low",
+    "Version": "4.7"
+  },
+  "4045719": {
+    "AchievementID": 4045719,
+    "SeriesID": 4,
+    "AchievementTitle": "别眨眼，会错过奇迹",
+    "AchievementDesc": "在点星船「二次元JUMP！」的超困难猜牌游戏中，选中正确的卡牌",
+    "ParamList": [],
+    "Priority": 6321,
+    "Rarity": "Low",
+    "Version": "4.7"
   },
   "4051001": {
     "AchievementID": 4051001,
@@ -15245,6 +15520,115 @@
     "Rarity": "Low",
     "Version": "4.6"
   },
+  "4055701": {
+    "AchievementID": 4055701,
+    "SeriesID": 5,
+    "AchievementTitle": "我与你与我周旋久",
+    "AchievementDesc": "假作真时真亦假，大变活人是阿哈<br><div style=\"color:#8790abff;\">※阿哈只是个名字，一个代号，你可以叫阿哈，我也可以叫阿哈，他们都可以，把这个代号拿掉之后呢？阿哈又是谁——答案，在下个魔术揭晓。</div>",
+    "ParamList": [],
+    "Priority": 2683,
+    "Rarity": "Low",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4055702": {
+    "AchievementID": 4055702,
+    "SeriesID": 5,
+    "AchievementTitle": "幽灵定格",
+    "AchievementDesc": "「穿过幕布，寻回宝藏」<br><div style=\"color:#8790abff;\">※将你的肖像留在点星船的画廊里</div>",
+    "ParamList": [],
+    "Priority": 2682,
+    "Rarity": "Low",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4055703": {
+    "AchievementID": 4055703,
+    "SeriesID": 5,
+    "AchievementTitle": "自然选择",
+    "AchievementDesc": "与点星船上的糖果动力阀交互",
+    "ParamList": [],
+    "Priority": 2681,
+    "Rarity": "Low",
+    "Version": "4.7"
+  },
+  "4055704": {
+    "AchievementID": 4055704,
+    "SeriesID": 5,
+    "AchievementTitle": "将来完成进行时",
+    "AchievementDesc": "大地的浮脂，何尝不是欢愉的养料？<br><div style=\"color:#8790abff;\">※「如果爱书之人从来都不尝试写书，那未免有点叶公好龙。」</div>",
+    "ParamList": [],
+    "Priority": 2680,
+    "Rarity": "Low",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4055705": {
+    "AchievementID": 4055705,
+    "SeriesID": 5,
+    "AchievementTitle": "契诃夫之枪",
+    "AchievementDesc": "如果序幕时舞台上就挂着一把枪…<br><div style=\"color:#8790abff;\">※「那在故事第六幕时这把枪必须开火。」</div>",
+    "ParamList": [],
+    "Priority": 2679,
+    "Rarity": "Low",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4055706": {
+    "AchievementID": 4055706,
+    "SeriesID": 5,
+    "AchievementTitle": "慈自多败己",
+    "AchievementDesc": "花火又发火花大火了？<br><div style=\"color:#8790abff;\">※「爱你老己，明天见」</div>",
+    "ParamList": [],
+    "Priority": 2678,
+    "Rarity": "Low",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4055711": {
+    "AchievementID": 4055711,
+    "SeriesID": 5,
+    "AchievementTitle": "二威玛传奇",
+    "AchievementDesc": "接手虚照留下的甜品店<br><div style=\"color:#8790abff;\">※据说顾客们到店就唱：「二威玛哦，二威玛，有了你生活美好没烦恼~」</div>",
+    "ParamList": [],
+    "Priority": 2677,
+    "Rarity": "Low",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4055712": {
+    "AchievementID": 4055712,
+    "SeriesID": 5,
+    "AchievementTitle": "食几只灵？",
+    "AchievementDesc": "第一次做出特殊甜品<br><div style=\"color:#8790abff;\">※我们承诺，本店没有任何一只尘灵受到伤害</div>",
+    "ParamList": [],
+    "Priority": 2676,
+    "Rarity": "Low",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4055713": {
+    "AchievementID": 4055713,
+    "SeriesID": 5,
+    "AchievementTitle": "落跑甜心",
+    "AchievementDesc": "在刃帮忙的时候扔掉一次甜品<br><div style=\"color:#8790abff;\">※也对，谁说垃圾桶不能吃大餐</div>",
+    "ParamList": [],
+    "Priority": 2675,
+    "Rarity": "Low",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4055714": {
+    "AchievementID": 4055714,
+    "SeriesID": 5,
+    "AchievementTitle": "我赢了！第一部完！",
+    "AchievementDesc": "完成第四幕剧情。<br><div style=\"color:#8790abff;\">※这就是我的逃稿路线^^！</div>",
+    "ParamList": [],
+    "Priority": 2674,
+    "Rarity": "Low",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
   "4060101": {
     "AchievementID": 4060101,
     "SeriesID": 6,
@@ -20171,6 +20555,88 @@
     "Priority": 6417,
     "Rarity": "Low",
     "Version": "4.6"
+  },
+  "4075701": {
+    "AchievementID": 4075701,
+    "SeriesID": 7,
+    "AchievementTitle": "无毒无害，不可食用",
+    "AchievementDesc": "在与「渊兽原体」的战斗中，「渊兽原体」施放【原初的圣餐】后，我方没有目标陷入【麻痹】",
+    "ParamList": [],
+    "Priority": 6402,
+    "Rarity": "Low",
+    "Version": "4.7"
+  },
+  "4075702": {
+    "AchievementID": 4075702,
+    "SeriesID": 7,
+    "AchievementTitle": "二维马力，八大神力",
+    "AchievementDesc": "星神★阿哈施放终结技后，在【欢愉万相】状态结束前累计获得至少8点【愿力】。",
+    "ParamList": [
+      {
+        "Value": 8
+      }
+    ],
+    "Priority": 6401,
+    "Rarity": "Low",
+    "Version": "4.7"
+  },
+  "4075703": {
+    "AchievementID": 4075703,
+    "SeriesID": 7,
+    "AchievementTitle": "三令吾神",
+    "AchievementDesc": "单场战斗中，除星神★阿哈外的3名我方角色都成为过【「欢愉」令使】，并分别通过回合开始效果为星神★阿哈提供1点【愿力】。<br><div style=\"color:#8790abff;\">※您理解了吗？「三令吾神」与「三令五申」谐音，令人忍俊不禁</div>",
+    "ParamList": [
+      {
+        "Value": 3
+      },
+      {
+        "Value": 1
+      }
+    ],
+    "Priority": 6400,
+    "Rarity": "Low",
+    "ShowType": "HiddenDesc",
+    "Version": "4.7"
+  },
+  "4075704": {
+    "AchievementID": 4075704,
+    "SeriesID": 7,
+    "AchievementTitle": "阿哈对于转生异世界一向是无所谓的",
+    "AchievementDesc": "使用星神★阿哈在迷宫中触发待机表演时，被不小心当成减速带",
+    "ParamList": [],
+    "Priority": 6399,
+    "Rarity": "Low",
+    "Version": "4.7"
+  },
+  "4075705": {
+    "AchievementID": 4075705,
+    "SeriesID": 7,
+    "AchievementTitle": "完美的脱逃魔术",
+    "AchievementDesc": "在与「贪欢的神颅」第一张脸的对战中，在四只「命运的大手」<br>出现时，只消灭一只手就成功解救被抓走的角色",
+    "ParamList": [],
+    "Priority": 6398,
+    "Rarity": "Low",
+    "Version": "4.7"
+  },
+  "4075706": {
+    "AchievementID": 4075706,
+    "SeriesID": 7,
+    "AchievementTitle": "为幸运女神扣动扳机",
+    "AchievementDesc": "在与「贪欢的神颅」第二张脸的对战中，连续射击，打出第四枪",
+    "ParamList": [],
+    "Priority": 6397,
+    "Rarity": "Low",
+    "Version": "4.7"
+  },
+  "4075707": {
+    "AchievementID": 4075707,
+    "SeriesID": 7,
+    "AchievementTitle": "笑容的正统性证明",
+    "AchievementDesc": "在与【「哲学的胎儿」疯狂】的对战中，在笑点占据优势的情况下将其击败",
+    "ParamList": [],
+    "Priority": 6396,
+    "Rarity": "Low",
+    "Version": "4.7"
   },
   "4080101": {
     "AchievementID": 4080101,
