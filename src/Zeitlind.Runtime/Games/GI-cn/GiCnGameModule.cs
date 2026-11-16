@@ -68,16 +68,15 @@ internal sealed class GiCnGameModule : IGameModule
 
     public string BuildExportSummary(ExportTarget target, AchievementSnapshot snapshot, AchievementCatalog catalog)
     {
+        var total = snapshot.Records.Count;
         var completed = snapshot.Records.Count(static record => record.IsCompleted);
-        var uiaf = snapshot.Records.Count(record =>
-            (record.Status is >= 2 and <= 3) || record.Progress is > 0 || record.IsCompleted
-        );
+        var uiaf = snapshot.Records.Count(GenshinUiafProjection.ShouldExport);
         return target switch
         {
             ExportTarget.AchievementBackup =>
-                $"导出完成：保留服务端返回的 {snapshot.Records.Count} 条原神成就记录，其中 {completed} 条已完成",
-            ExportTarget.Uiaf => $"导出完成：写入 UIAF v1.1 的 {uiaf} 条原神成就记录",
-            ExportTarget.UiafV12 => $"导出完成：写入实验性 UIAF v1.2 的 {uiaf} 条原神成就记录",
+                $"读取 {total} 条，实际导出 {total} 条。\n完整备份保留全部记录，其中 {completed} 条已完成。",
+            ExportTarget.Uiaf or ExportTarget.UiafV12 =>
+                $"读取 {total} 条，实际导出 {uiaf} 条，按格式规则未导出 {total - uiaf} 条。\n仅导出已完成或已有进度的成就。",
             ExportTarget.Liyin => throw new InvalidDataException("原神国服不支持 Liyin 导出"),
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };

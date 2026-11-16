@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using Zeitlind.Core.Games;
 using Zeitlind.Runtime;
@@ -159,6 +160,13 @@ public partial class MainWindow : Window
         OpenResultButton.Visibility = Visibility.Collapsed;
         SetBusy(true);
         SetStatus("正在准备", "正在检查游戏安装与运行状态…");
+        var startedAt = Stopwatch.GetTimestamp();
+        var elapsedTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        elapsedTimer.Tick += (_, _) =>
+            ElapsedText.Text = $"已等待 {(int)Stopwatch.GetElapsedTime(startedAt).TotalSeconds} 秒";
+        ElapsedText.Text = "已等待 0 秒";
+        ElapsedText.Visibility = Visibility.Visible;
+        elapsedTimer.Start();
         var progress = new Progress<ExportProgress>(update =>
         {
             // Queued dispatcher updates must not overwrite cancellation or a finished result.
@@ -190,6 +198,8 @@ public partial class MainWindow : Window
         }
         finally
         {
+            elapsedTimer.Stop();
+            ElapsedText.Visibility = Visibility.Collapsed;
             FinishOperation();
         }
     }
@@ -214,7 +224,7 @@ public partial class MainWindow : Window
             var result = await Task.Run(() => capture.SaveAsync(option.Target, directory, cancellation.Token));
             _resultDirectory = Path.GetDirectoryName(result.Path);
             OpenResultButton.Visibility = Visibility.Visible;
-            SetStatus("导出完成", $"{result.DisplayName}\n{result.Path}");
+            SetStatus("导出完成", $"{capture.GameName} · {result.DisplayName}\n{result.Summary}\n{result.Path}");
         }
         catch (OperationCanceledException)
         {
@@ -243,6 +253,7 @@ public partial class MainWindow : Window
     {
         if (_operationCancellation is null)
         {
+            e.Cancel = !ConfirmDiscardUnsavedCapture();
             return;
         }
         e.Cancel = true;
@@ -256,6 +267,7 @@ public partial class MainWindow : Window
         SetBusy(false);
         if (_closeAfterOperation)
         {
+            _closeAfterOperation = false;
             Close();
         }
     }
@@ -271,7 +283,7 @@ public partial class MainWindow : Window
 
     private void Reset_Click(object sender, RoutedEventArgs e)
     {
-        if (_operationCancellation is not null)
+        if (_operationCancellation is not null || !ConfirmDiscardUnsavedCapture())
         {
             return;
         }
@@ -284,6 +296,20 @@ public partial class MainWindow : Window
             SetStatus("准备就绪", "选择游戏，开始下一次成就导出。");
         }
         GameActions.BringIntoView();
+    }
+
+    private bool ConfirmDiscardUnsavedCapture()
+    {
+        return _capture is null
+            || _resultDirectory is not null
+            || MessageBox.Show(
+                this,
+                "本次读取的成就尚未保存，离开后需要重新读取。\n\n确定放弃本次结果吗？",
+                "尚未保存",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning,
+                MessageBoxResult.No
+            ) == MessageBoxResult.Yes;
     }
 
     private void OpenResult_Click(object sender, RoutedEventArgs e)

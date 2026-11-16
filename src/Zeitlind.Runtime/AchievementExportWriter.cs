@@ -42,9 +42,10 @@ internal static class AchievementExportWriter
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };
         var content = module.Serialize(target, snapshot, uid, catalog);
+        var summary = module.BuildExportSummary(target, snapshot, catalog);
         var outputPath = UniquePath(directory, fileName);
         await AtomicFile.WriteAllTextAsync(outputPath, content, cancellationToken);
-        return new ExportResult(displayName, outputPath);
+        return new ExportResult(displayName, outputPath, summary);
     }
 
     private static string UniquePath(string directory, string fileName)
@@ -70,4 +71,4 @@ internal static class AchievementExportWriter
     }
 }
 
-internal sealed record ExportResult(string DisplayName, string Path);
+internal sealed record ExportResult(string DisplayName, string Path, string Summary);

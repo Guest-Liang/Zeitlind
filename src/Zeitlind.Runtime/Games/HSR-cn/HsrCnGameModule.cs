@@ -66,15 +66,18 @@ internal sealed class HsrCnGameModule : IGameModule
 
     public string BuildExportSummary(ExportTarget target, AchievementSnapshot snapshot, AchievementCatalog catalog)
     {
+        var total = snapshot.Records.Count;
         var completed = snapshot.Records.Count(static record => record.IsCompleted);
         var knownCompleted = snapshot.Records.Count(record => catalog.Ids.Contains(record.Id) && record.IsCompleted);
         var uiaf = snapshot.Records.Count(record => catalog.Ids.Contains(record.Id) && record.Status is >= 1 and <= 3);
         return target switch
         {
             ExportTarget.AchievementBackup =>
-                $"导出完成：保留服务端返回的 {snapshot.Records.Count} 条星穹铁道成就记录，其中 {completed} 条已完成",
-            ExportTarget.Liyin => $"导出完成：写入元数据内 {knownCompleted} 条已完成的星穹铁道成就 ID",
-            ExportTarget.Uiaf => $"导出完成：写入元数据内且状态为 1/2/3 的 {uiaf} 条星穹铁道成就记录",
+                $"读取 {total} 条，实际导出 {total} 条。\n完整备份保留全部记录，其中 {completed} 条已完成。",
+            ExportTarget.Liyin =>
+                $"读取 {total} 条，实际导出 {knownCompleted} 条，按格式规则未导出 {total - knownCompleted} 条。\n仅导出已完成且本地成就目录已收录的记录。",
+            ExportTarget.Uiaf =>
+                $"读取 {total} 条，实际导出 {uiaf} 条，按格式规则未导出 {total - uiaf} 条。\n仅导出本地成就目录已收录、且状态为未完成 / 已完成 / 已领奖的记录。",
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };
     }

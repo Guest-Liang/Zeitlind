@@ -35,7 +35,7 @@ internal sealed class AchievementCapture(
             outputDirectory,
             cancellationToken
         );
-        ApplicationLog.WriteInfo(module.BuildExportSummary(target, snapshot, catalog));
+        ApplicationLog.WriteInfo($"导出完成：{result.Summary}");
         ApplicationLog.WriteInfo($"{result.DisplayName}：{result.Path}");
         return result;
     }

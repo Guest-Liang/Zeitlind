@@ -77,13 +77,16 @@ internal sealed class ZzzCnGameModule : IGameModule
 
     public string BuildExportSummary(ExportTarget target, AchievementSnapshot snapshot, AchievementCatalog catalog)
     {
+        var total = snapshot.Records.Count;
         var completed = snapshot.Records.Count(static record => record.IsCompleted);
         return target switch
         {
             ExportTarget.AchievementBackup =>
-                $"导出完成：保留服务端返回的 {snapshot.Records.Count} 条绝区零成就记录，其中 {completed} 条已完成",
-            ExportTarget.Liyin => $"导出完成：写入 {completed} 条具有完成证据的绝区零成就 ID",
-            ExportTarget.Uiaf => $"导出完成：写入服务端实际返回的 {snapshot.Records.Count} 条绝区零成就记录",
+                $"读取 {total} 条，实际导出 {total} 条。\n完整备份保留全部记录，其中 {completed} 条已完成。",
+            ExportTarget.Liyin =>
+                $"读取 {total} 条，实际导出 {completed} 条，按格式规则未导出 {total - completed} 条。\n仅导出已完成成就。",
+            ExportTarget.Uiaf =>
+                $"读取 {total} 条，实际导出 {total} 条。\n保留全部读取记录，其中 {completed} 条已完成。",
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, "未知导出目标"),
         };
     }
