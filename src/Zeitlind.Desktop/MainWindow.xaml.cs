@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     private AchievementCapture? _capture;
     private string? _manualExecutable;
     private string? _resultDirectory;
+    private string? _lastError;
     private bool _closeAfterOperation;
 
     public MainWindow()
@@ -25,6 +26,9 @@ public partial class MainWindow : Window
         InitializeComponent();
         VersionText.Text = $"v{ApplicationBuildInfo.Version}";
     }
+
+    private void About_Click(object sender, RoutedEventArgs e) =>
+        new AboutWindow(_lastError) { Owner = this }.ShowDialog();
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
@@ -340,6 +344,10 @@ public partial class MainWindow : Window
         StatusTitle.Text = title;
         StatusTitle.Foreground = isError ? Brushes.Firebrick : (Brush)FindResource("TextBrush");
         StatusDetail.Text = detail;
+        if (isError)
+        {
+            _lastError = $"{title}{Environment.NewLine}{detail}";
+        }
     }
 }
 

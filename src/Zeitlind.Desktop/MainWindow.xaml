@@ -27,6 +27,7 @@
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
       <Border Width="54" Height="54" CornerRadius="12" Background="{StaticResource AccentBrush}">
         <TextBlock
@@ -60,6 +61,13 @@
           Margin="0,5,0,0"
         />
       </StackPanel>
+      <Button
+        Grid.Column="3"
+        Content="关于与诊断"
+        VerticalAlignment="Center"
+        Margin="16,0,0,0"
+        Click="About_Click"
+      />
     </Grid>
     <ScrollViewer
       Grid.Row="1"
