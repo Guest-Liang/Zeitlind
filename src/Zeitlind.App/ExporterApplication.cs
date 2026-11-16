@@ -31,7 +31,8 @@ internal static class ExporterApplication
         }
 
         ApplicationLog.WriteInfo("Zeitlind — 绝区零、崩坏：星穹铁道与原神成就导出");
-        ApplicationLog.WriteInfo("https://github.com/Guest-Liang/Zeitlind");
+        Console.WriteLine(ApplicationBuildInfo.Copyright);
+        Console.WriteLine($"原始仓库：{ApplicationBuildInfo.RepositoryUrl}");
         Console.WriteLine();
         ApplicationLog.WriteWarning(
             """

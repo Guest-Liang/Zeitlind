@@ -176,6 +176,8 @@ internal sealed class ApplicationLog : IDisposable
             ApplicationLogLevel.Info,
             $"软件版本：{ApplicationBuildInfo.Version}；构建配置：{ApplicationBuildInfo.Configuration}"
         );
+        _sink.Write(ApplicationLogLevel.Info, ApplicationBuildInfo.Copyright);
+        _sink.Write(ApplicationLogLevel.Info, $"原始仓库：{ApplicationBuildInfo.RepositoryUrl}");
         _sink.Write(ApplicationLogLevel.Info, $"可执行文件：{Environment.ProcessPath ?? "unknown"}");
         _sink.Write(ApplicationLogLevel.Info, $"程序目录：{programDirectory}");
         _sink.Write(ApplicationLogLevel.Info, $"当前工作目录：{Environment.CurrentDirectory}");
