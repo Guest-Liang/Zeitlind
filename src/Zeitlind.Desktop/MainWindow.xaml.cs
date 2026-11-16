@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using Zeitlind.Core.Games;
@@ -24,6 +25,13 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        var logo = new IconBitmapDecoder(
+            new Uri("pack://application:,,,/Assets/Zeitlind.ico"),
+            BitmapCreateOptions.PreservePixelFormat,
+            BitmapCacheOption.OnLoad
+        );
+        Icon = logo.Frames[0];
+        LogoBrush.ImageSource = logo.Frames[^1];
         VersionText.Text = $"v{ApplicationBuildInfo.Version}";
     }
 

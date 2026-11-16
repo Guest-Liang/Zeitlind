@@ -1,6 +1,6 @@
 # Zeitlind
 
-Zeitlind 是 Windows x64 下的游戏成就导出工具。运行所需 CPU 基线为 x86-64-v2，包括 SSE4.2 和 POPCNT。 [.NET 11 硬件要求](https://learn.microsoft.com/en-us/dotnet/core/compatibility/jit/11/minimum-hardware-requirements)
+Zeitlind 是 Windows x64 下的游戏成就导出工具。[.NET 11 硬件要求](https://learn.microsoft.com/en-us/dotnet/core/compatibility/jit/11/minimum-hardware-requirements)
 
 ~~已通过AI Slop认证~~
 <p align="center">
@@ -27,10 +27,10 @@ Zeitlind 是 Windows x64 下的游戏成就导出工具。运行所需 CPU 基�
 
 ### GUI（WPF / .NET 11）
 
-GUI 为 Windows x64 自包含单文件 `Zeitlind_v<version>_Release_desktop.exe`。首次启动时会将 WPF 依赖解压到本机临时缓存。无需安装，也无需预装 .NET 或 Windows App SDK。
+GUI 为 Windows x64 自包含单文件 `Zeitlind_v<version>_Release_desktop.exe`。首次启动时会将 WPF 依赖解压到本机临时缓存。
 
 1. 完全退出需要导出的游戏，双击 GUI EXE，允许启动时的 Windows 管理员权限请求。
-2. 在游戏列表中点击“导出成就”。列表显示注册表检测到的绝区零、崩坏：星穹铁道和原神国服，可点击“刷新列表”重新检测。状态区会分别提示检测数量、未检测到安装、路径无效和读取失败；具体原因显示在对应游戏卡片中。
+2. 在游戏列表中点击“导出成就”。列表显示注册表检测到的绝区零、崩坏：星穹铁道和原神国服，可点击“刷新列表”重新检测。
 3. 如果没有检测到安装，点击“选择游戏 EXE…”打开文件选择器，进入游戏安装目录，选择 `ZenlessZoneZero.exe`、`StarRail.exe` 或 `YuanShen.exe`。选择成功后再点击“导出成就”。
 4. 正常登录并进入游戏。窗口会显示读取进度；得到完整快照后，会请求本次启动的游戏正常退出，10 秒超时后再强制关闭。
 5. 选择导出格式并点击“保存文件”。结果写入 EXE 旁边的 `Exports` 文件夹，可直接打开输出目录；保存失败时数据仍保留在当前窗口，可以重试。
@@ -62,7 +62,7 @@ CLI继续作为独立的 NativeAOT 单 EXE 提供，文件名为 `Zeitlind_v<ver
 # 非交互导出；目标目录不存在时会自动创建
 .\Zeitlind_v<version>_Release_cli.exe --game "D:\Games\Star Rail\Games\StarRail.exe" `
   --format liyin `
-  --output "D:\AchievementBackups\2026"
+  --output "D:\AchievementBackups\"
 ```
 
 完整参数：
@@ -109,11 +109,7 @@ Zeitlind.exe --version
 dotnet build .\Zeitlind.slnx -c Release
 ```
 
-GUI位于 `artifacts\desktop\Zeitlind_v<version>_Release_desktop.exe`，CLI 位于 `artifacts\build`。`build-desktop.ps1` 会检查发布目录递归仅包含一个 EXE，并校验版本资源；如果出现附带 DLL、配置文件或其他文件，会直接报错。
-
-`build-all.ps1` 只构建一次三个 Hook，再分别发布 CLI 和 Desktop。两个独立入口都支持 `-SkipHookBuild`，缺少缓存 DLL 时会提示重新构建；修改 Hook、Hook.Common、Core 或 SDK/构建配置后，应先执行 `build-hooks.ps1` 或省略这个开关。版本读取与 Windows 版本资源校验共用 `tools/build-common.ps1`。原来的 `build-desktop.ps1 -IncludeCliDebug` 仍可用于组合构建。
-
-GitHub Release 和 Actions artifact 同时包含三份独立 EXE：`Zeitlind_v<version>_Release_cli.exe`、`Zeitlind_v<version>_Debug_cli.exe`、`Zeitlind_v<version>_Release_desktop.exe`。GUI公开发布 Release；需要诊断版时可在本地执行 `.\build-desktop.ps1 -Configuration Debug`，生成 `Zeitlind_v<version>_Debug_desktop.exe`。
+GUI位于 `artifacts\desktop\Zeitlind_v<version>_Release_desktop.exe`，CLI 位于 `artifacts\build`。
 
 ## 导出格式
 
@@ -127,8 +123,6 @@ GitHub Release 和 Actions artifact 同时包含三份独立 EXE：`Zeitlind_v<v
 > [!WARNING]
 > 程序日志位于可执行文件所在目录，文件名为 `Zeitlind-YYYY-MM-DD.log`。日志可能包含游戏路径、导出路径和 UID，并且不会自动删除；向他人分享日志前，请先检查其中是否包含不希望公开的个人信息。
 
-运行时提取的 Hook DLL 位于本次运行专用的受保护临时目录；导出成功、取消或发生可处理异常后会自动删除。若进程被强制终止而来不及清理，遗留目录不会由后续管理员进程全局扫描，以避免清理不属于当前进程的路径。
-
 ## 成就目录更新
 
 ZZZ、星铁和原神共用 GitHub Actions 工作流 `Check Achievement Metadata`（`.github/workflows/update-metadata.yaml`），每天北京时间 10:17 通过矩阵分别检查三款游戏，也可在 Actions 页面手动运行。有变化时为对应游戏创建或更新独立 PR，供人工核对后合并；不会自动合并或发布。每款游戏沿用原来的更新分支，一款游戏检查失败不会取消其他游戏的检查。
@@ -140,32 +134,12 @@ ZZZ、星铁和原神共用 GitHub Actions 工作流 `Check Achievement Metadata
 
 原神数据来自 Yae 的 [`schicksal/metadata`](https://rin.holohat.work/schicksal/metadata) Protobuf 接口，按上游 [`AchievementInfo.proto`](https://github.com/HolographicHat/Yae/blob/master/YaeAchievement/res/proto/AchievementInfo.proto) 转换为 `GenshinAchievementInfo.json`，只同步成就目录。`Version` 表示目录快照版本，不是各项成就的首次上线版本。
 
-本地可用 Python 3 运行，无需额外依赖：
-
-```powershell
-# 比较 ZZZ 两个来源，只检查差异
-python tools/update-liyin-metadata.py --game zzz --check
-
-# 获取、校验并更新 ZZZ 本地目录
-python tools/update-liyin-metadata.py --game zzz
-
-# 比较星铁两个来源，只检查差异
-python tools/update-liyin-metadata.py --game hsr --check
-
-# 获取、校验并更新星铁本地目录
-python tools/update-liyin-metadata.py --game hsr
-
-# 检查原神目录差异
-python tools/update-genshin-metadata.py --check
-
-# 获取、校验并更新本地目录
-python tools/update-genshin-metadata.py
-```
-
 ## 致谢与许可证
 
 项目设计参考了 [Yae](https://github.com/HolographicHat/Yae)。感谢 HolographicHat 与 Yae 项目贡献者提供的实现思路。
 
 绝区零元数据来自 [zzz.liyin.space](https://github.com/Ticca-Liyin/zzz.liyin.space)，星铁元数据来自 [liyin.space](https://github.com/Ticca-Liyin/liyin.space)，原神成就目录来自 [Yae `schicksal/metadata`](https://github.com/HolographicHat/Yae/blob/master/YaeAchievement/src/GlobalVars.cs)。实验性成就交换格式参考 [UIAF](https://uigf.org/zh/standards/uiaf.html) 及其多游戏分组思路，[提案链接](https://github.com/orgs/UIGF-org/discussions/18)。原神 `--format uiaf` 仍导出正式 UIAF v1.1；`--format uiaf12` 为带 UID 的实验性 v1.2。
+
+应用图标来自 [@whitia100 在 X 发布的插画](https://x.com/whitia100/status/2044419772742553619)
 
 本仓库采用 GNU GPL v3，详见 [`LICENSE`](LICENSE)。

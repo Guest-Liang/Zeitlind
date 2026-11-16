@@ -29,16 +29,17 @@
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
-      <Border Width="54" Height="54" CornerRadius="12" Background="{StaticResource AccentBrush}">
-        <TextBlock
-          Text="Z"
-          FontSize="30"
-          FontWeight="SemiBold"
-          Foreground="White"
-          HorizontalAlignment="Center"
-          VerticalAlignment="Center"
-        />
-      </Border>
+      <Rectangle
+        Width="54"
+        Height="54"
+        RadiusX="12"
+        RadiusY="12"
+        RenderOptions.BitmapScalingMode="HighQuality"
+      >
+        <Rectangle.Fill>
+          <ImageBrush x:Name="LogoBrush" />
+        </Rectangle.Fill>
+      </Rectangle>
       <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
         <TextBlock Text="Zeitlind" FontSize="27" FontWeight="SemiBold" />
         <TextBlock
